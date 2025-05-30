@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: lisadocs-postgres
+    environment:
+      POSTGRES_DB: lisadocs
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: lisadocs123
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docs/db_simplified.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - lisadocs-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: lisadocs-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: lisadocs_admin
+      MINIO_ROOT_PASSWORD: lisadocs_minio_2024
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+    ports:
+      - "9000:9000"  # API MinIO
+      - "9001:9001"  # Console Web MinIO
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+    networks:
+      - lisadocs-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Servicio para crear buckets automáticamente
+  minio-setup:
+    image: minio/mc:latest
+    container_name: lisadocs-minio-setup
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Esperando a que MinIO esté listo...';
+      until /usr/bin/mc alias set minio http://minio:9000 lisadocs_admin lisadocs_minio_2024; do
+        echo 'MinIO no está listo, esperando...';
+        sleep 5;
+      done;
+      echo 'MinIO está listo, creando buckets...';
+      /usr/bin/mc mb minio/lisadocs-cam --ignore-existing;
+      /usr/bin/mc mb minio/lisadocs-ampp --ignore-existing;
+      /usr/bin/mc mb minio/lisadocs-presidencia --ignore-existing;
+      /usr/bin/mc mb minio/lisadocs-intendencia --ignore-existing;
+      /usr/bin/mc mb minio/lisadocs-comisiones-cf --ignore-existing;
+      echo 'Configurando políticas de acceso...';
+      /usr/bin/mc anonymous set download minio/lisadocs-cam;
+      /usr/bin/mc anonymous set download minio/lisadocs-ampp;
+      /usr/bin/mc anonymous set download minio/lisadocs-presidencia;
+      /usr/bin/mc anonymous set download minio/lisadocs-intendencia;
+      /usr/bin/mc anonymous set download minio/lisadocs-comisiones-cf;
+      echo 'Buckets creados y configurados exitosamente!';
+      exit 0;
+      "
+    networks:
+      - lisadocs-network
+
+volumes:
+  postgres_data:
+    driver: local
+  minio_data:
+    driver: local
+
+networks:
+  lisadocs-network:
+    driver: bridge 
