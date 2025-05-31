@@ -1,8 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// 🧙‍♂️ LisaDocs - Prisma Schema
+// Basado en db_simplified.sql - Sistema de Gestión Documental
 
 generator client {
   provider = "prisma-client-js"
@@ -12,4 +9,158 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// ===== ENUMS =====
+enum UserRole {
+  administrador
+  presidente
+  vicepresidente
+  secretario_cam
+  secretario_ampp
+  secretario_cf
+  intendente
+  cf_member
+
+  @@map("user_role")
+}
+
+enum WorkspaceType {
+  cam
+  ampp
+  presidencia
+  intendencia
+  comisiones_cf
+
+  @@map("workspace_type")
+}
+
+enum DocumentStatus {
+  draft
+  stored
+  archived
+
+  @@map("document_status")
+}
+
+enum NotificationType {
+  document_uploaded
+  document_archived
+  system_message
+  warning
+
+  @@map("notification_type")
+}
+
+// ===== MODELS =====
+
+model User {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email       String        @unique @db.VarChar(255)
+  fullName    String        @map("full_name") @db.VarChar(255)
+  role        UserRole
+  workspace   WorkspaceType
+  passwordHash String?      @map("password_hash") @db.VarChar(255)
+  isActive    Boolean       @default(true) @map("is_active")
+  lastLoginAt DateTime?     @map("last_login_at") @db.Timestamptz(6)
+  preferences Json          @default("{}")
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  documents         Document[]
+  documentActivities DocumentActivity[]
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+model Document {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String         @db.VarChar(500)
+  description String?
+  fileUrl     String         @map("file_url") @db.VarChar(1000)
+  fileName    String         @map("file_name") @db.VarChar(255)
+  fileSize    BigInt         @map("file_size")
+  mimeType    String         @map("mime_type") @db.VarChar(100)
+  fileHash    String?        @map("file_hash") @db.VarChar(64)
+  status      DocumentStatus @default(draft)
+  workspace   WorkspaceType
+  tags        String[]       @default([])
+  metadata    Json           @default("{}")
+  createdBy   String         @map("created_by") @db.Uuid
+  storedAt    DateTime?      @map("stored_at") @db.Timestamptz(6)
+  archivedAt  DateTime?      @map("archived_at") @db.Timestamptz(6)
+  expiresAt   DateTime?      @map("expires_at") @db.Timestamptz(6)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  createdByUser User                   @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  activities    DocumentActivity[]
+  notifications Notification[]
+
+  @@map("documents")
+}
+
+model RolePermission {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fromRole          UserRole      @map("from_role")
+  toWorkspace       WorkspaceType @map("to_workspace")
+  canView           Boolean       @default(false) @map("can_view")
+  canDownload       Boolean       @default(false) @map("can_download")
+  canArchiveOthers  Boolean       @default(false) @map("can_archive_others")
+  canManageWorkspace Boolean      @default(false) @map("can_manage_workspace")
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([fromRole, toWorkspace])
+  @@map("role_permissions")
+}
+
+model DocumentActivity {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  documentId String   @map("document_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  action     String   @db.VarChar(50)
+  details    Json     @default("{}")
+  ipAddress  String?  @map("ip_address") @db.Inet
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("document_activities")
+}
+
+model Notification {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String           @map("user_id") @db.Uuid
+  title              String           @db.VarChar(255)
+  message            String
+  type               NotificationType
+  relatedDocumentId  String?          @map("related_document_id") @db.Uuid
+  isRead             Boolean          @default(false) @map("is_read")
+  readAt             DateTime?        @map("read_at") @db.Timestamptz(6)
+  expiresAt          DateTime?        @map("expires_at") @db.Timestamptz(6)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedDocument Document? @relation(fields: [relatedDocumentId], references: [id], onDelete: SetNull)
+
+  @@map("notifications")
+}
+
+model SystemSetting {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String   @unique @db.VarChar(100)
+  value       Json
+  description String?
+  isPublic    Boolean  @default(false) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("system_settings")
 }

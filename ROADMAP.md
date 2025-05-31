@@ -20,14 +20,14 @@
 
 ### 🏗️ Backend (Mañana - 4h)
 
-- [ ] **Setup inicial del proyecto**
+- [X] **Setup inicial del proyecto**
   - Inicializar proyecto Node.js con TypeScript
   - Configurar Fastify + plugins esenciales
   - Setup Prisma + PostgreSQL
   - Ejecutar el esquema `db_simplified.sql`
   - Configurar variables de entorno
 
-- [ ] **Sistema de Autenticación**
+- [X] **Sistema de Autenticación**
   - Implementar registro/login con JWT
   - Middleware de autenticación
   - Validación de roles y permisos
@@ -35,13 +35,13 @@
 
 ### 🎨 Frontend (Tarde - 4h)
 
-- [ ] **Setup inicial del proyecto**
+- [X] **Setup inicial del proyecto**
   - Crear proyecto Vite + React + TypeScript
   - Configurar Tailwind CSS + shadcn/ui
   - Setup de estructura de carpetas
   - Configurar Zustand para state management
 
-- [ ] **UI de Autenticación**
+- [X] **UI de Autenticación**
   - Componente Login elegante y responsivo
   - Formulario de registro con validación
   - Layout principal con sidebar y navegación

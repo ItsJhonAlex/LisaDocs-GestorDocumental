@@ -4,6 +4,7 @@ import multipart from '@fastify/multipart'
 import jwt from '@fastify/jwt'
 import staticFiles from '@fastify/static'
 import path from 'path'
+import { authRoutes } from './routes/auth'
 
 // Configuración del servidor
 const app = Fastify({
@@ -80,8 +81,10 @@ async function buildServer() {
       }
     })
 
-    // TODO: Aquí registraremos las rutas cuando las creemos
-    // await app.register(authRoutes, { prefix: '/api/auth' })
+    // 🔐 Registrar rutas de autenticación
+    await app.register(authRoutes, { prefix: '/api' })
+    
+    // TODO: Registrar otras rutas cuando las creemos
     // await app.register(documentRoutes, { prefix: '/api/documents' })
     // await app.register(userRoutes, { prefix: '/api/users' })
 
