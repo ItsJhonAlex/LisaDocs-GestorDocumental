@@ -1,20 +1,26 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyRequest, FastifyReply, FastifyInstance } from 'fastify';
+import fp from 'fastify-plugin';
 import { verifyAccessToken, extractTokenFromHeader, isTokenBlacklisted } from '../utils/jwt';
 import { authService } from '../services/authService';
 import { AuthenticatedUser } from '../types/auth';
 
-// Extender el tipo de Request para incluir authUser (evitando conflicto con @fastify/jwt)
+// Extender el tipo de Request para incluir user y authToken
 declare module 'fastify' {
   interface FastifyRequest {
+    user?: AuthenticatedUser;
     authUser?: AuthenticatedUser;
     authToken?: string;
+  }
+  
+  interface FastifyInstance {
+    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
 
 /**
- * 🔐 Middleware de autenticación JWT
+ * 🔐 Middleware de autenticación JWT principal
  */
-export async function authMiddleware(
+async function authenticate(
   request: FastifyRequest,
   reply: FastifyReply
 ): Promise<void> {
@@ -59,7 +65,8 @@ export async function authMiddleware(
       });
     }
 
-    // Agregar authUser y authToken al request
+    // Agregar user (alias para compatibilidad) y authUser al request
+    request.user = userProfile;
     request.authUser = userProfile;
     request.authToken = token;
 
@@ -86,6 +93,20 @@ export async function authMiddleware(
     });
   }
 }
+
+/**
+ * 🎯 Plugin principal de autenticación para Fastify
+ */
+export const authMiddleware = fp(async function authPlugin(fastify: FastifyInstance) {
+  // 🔧 Decorar la instancia de Fastify con el método authenticate
+  fastify.decorate('authenticate', authenticate);
+  
+  // 📝 Log de registro del plugin
+  fastify.log.info('🔐 Authentication middleware registered successfully');
+}, {
+  name: 'auth-middleware',
+  dependencies: []
+});
 
 /**
  * 👑 Middleware opcional de autenticación (no falla si no hay token)
