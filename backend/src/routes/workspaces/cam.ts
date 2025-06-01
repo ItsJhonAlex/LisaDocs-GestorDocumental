@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { documentService } from '../../services/documentService'
 import { workspaceService } from '../../services/workspaceService'
 import { z } from 'zod'
+import { LogMessages } from '../../utils/logger'
 
 // 📋 Schema para filtros específicos de CAM
 const camFiltersSchema = z.object({
@@ -334,14 +335,11 @@ export async function camRoutes(fastify: FastifyInstance): Promise<void> {
   })
 
   // 🎯 Log específico de CAM
-  fastify.log.info({
-    workspace: 'CAM',
-    routes: [
-      'GET /documents - Commercial documents with filters',
-      'GET /dashboard - Commercial dashboard metrics', 
-      'GET /reports - Commercial reports and analytics'
-    ]
-  }, '🏢 CAM workspace routes registered')
+  fastify.log.info(LogMessages.workspaceRoutes('CAM', [
+    'GET /documents - Commercial documents with filters',
+    'GET /dashboard - Commercial dashboard metrics', 
+    'GET /reports - Commercial reports and analytics'
+  ]))
 }
 
 // 🔧 Funciones auxiliares específicas de CAM

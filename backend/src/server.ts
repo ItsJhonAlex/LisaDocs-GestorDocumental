@@ -1,14 +1,20 @@
 import Fastify, { FastifyInstance } from 'fastify'
 import cors from '@fastify/cors'
 import multipart from '@fastify/multipart'
+import fastifySwagger from '@fastify/swagger'
+import fastifySwaggerUi from '@fastify/swagger-ui'
+import fastifyHelmet from '@fastify/helmet'
+import fastifyRateLimit from '@fastify/rate-limit'
 
 // 🔧 Configuración y utilidades
 import prisma from './config/database'
+import { getFastifyConfig, validateAppConfig, appConfig } from './config/app'
 
 // 🛡️ Middlewares
 import { authMiddleware } from './middleware/auth'
 import { errorHandler, notFoundHandler, uncaughtErrorHandler, unhandledRejectionHandler } from './middleware/errorHandler'
 import { loggingMiddleware } from './middleware/logging'
+import { LogMessages } from './utils/logger'
 
 // 🚦 Rutas principales
 import { authRoutes } from './routes/auth'
@@ -86,9 +92,120 @@ async function createServer(): Promise<FastifyInstance> {
   // 🔐 Configurar autenticación
   await server.register(authMiddleware)
 
+  // 📚 Configurar documentación Swagger (solo en desarrollo)
+  if (process.env.NODE_ENV === 'development') {
+    await server.register(fastifySwagger, {
+      openapi: {
+        openapi: '3.0.0',
+        info: {
+          title: 'LisaDocs API',
+          description: 'Sistema de Gestión Documental - API REST completa',
+          version: '1.0.0',
+          contact: {
+            name: 'Equipo de Desarrollo',
+            email: 'itsjhonalex@gmail.com'
+          }
+        },
+        servers: [
+          {
+            url: 'http://localhost:3001',
+            description: 'Servidor de Desarrollo'
+          }
+        ],
+        components: {
+          securitySchemes: {
+            bearerAuth: {
+              type: 'http',
+              scheme: 'bearer',
+              bearerFormat: 'JWT'
+            }
+          }
+        },
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        tags: [
+          { name: 'System', description: 'Endpoints del sistema' },
+          { name: 'Auth', description: 'Autenticación y autorización' },
+          { name: 'Users', description: 'Gestión de usuarios' },
+          { name: 'Workspaces', description: 'Espacios de trabajo' },
+          { name: 'Documents', description: 'Gestión de documentos' },
+          { name: 'Notifications', description: 'Sistema de notificaciones' },
+          { name: 'Admin', description: 'Administración del sistema' }
+        ]
+      }
+    })
+
+    await server.register(fastifySwaggerUi, {
+      routePrefix: '/docs',
+      uiConfig: {
+        docExpansion: 'list',
+        deepLinking: false
+      },
+      uiHooks: {
+        onRequest: function (request, reply, next) { next() },
+        preHandler: function (request, reply, next) { next() }
+      },
+      staticCSP: true,
+      transformStaticCSP: (header) => header,
+      transformSpecification: (swaggerObject, request, reply) => { return swaggerObject },
+      transformSpecificationClone: true
+    })
+
+    server.log.info('📚 Swagger documentation enabled at /docs')
+  }
+
   // ❌ Configurar manejo de errores
   server.setErrorHandler(errorHandler)
   server.setNotFoundHandler(notFoundHandler)
+
+  // 🎉 Ruta de bienvenida
+  server.get('/', {
+    schema: {
+      description: 'Welcome to LisaDocs API',
+      tags: ['System'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' },
+            name: { type: 'string' },
+            version: { type: 'string' },
+            status: { type: 'string' },
+            documentation: { type: 'string' },
+            endpoints: { type: 'object' }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    return reply.code(200).send({
+      message: '¡Bienvenido a LisaDocs API! 🚀',
+      name: 'LisaDocs - Sistema de Gestión Documental',
+      version: '1.0.0',
+      status: 'Servidor funcionando correctamente ✅',
+      documentation: process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3001/docs' 
+        : 'Contacta al administrador para la documentación',
+      endpoints: {
+        system: {
+          health: '/health',
+          info: '/info'
+        },
+        api: {
+          auth: '/api/auth',
+          users: '/api/users', 
+          workspaces: '/api/workspaces',
+          documents: '/api/documents',
+          notifications: '/api/notifications',
+          admin: '/api/admin'
+        },
+        help: '🔍 Usa /health para verificar el estado del servidor'
+      }
+    })
+  })
 
   // 🏠 Ruta de salud del sistema
   server.get('/health', {
@@ -269,13 +386,12 @@ async function startServer(): Promise<ServerContext> {
     }
 
     // 📢 Log de inicio exitoso
-    server.log.info({
-      port,
-      host,
-      environment: process.env.NODE_ENV || 'development',
-      nodeVersion: process.version,
-      docs: process.env.NODE_ENV === 'development' ? `http://localhost:${port}/docs` : null
-    }, '🚀 LisaDocs API Server started successfully!')
+    server.log.info(LogMessages.serverStart(port, host))
+
+    // 📢 Log adicional para desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      server.log.info(LogMessages.hotReload())
+    }
 
     // 🛑 Configurar shutdown graceful
     const gracefulShutdown = async (signal: string) => {
@@ -315,12 +431,9 @@ async function startDevelopmentServer(): Promise<void> {
   const context = await startServer()
   
   // 🔄 Watch para cambios en desarrollo
-  if (process.env.NODE_ENV === 'development') {
-    context.server.log.info('🔄 Development mode: Hot reload enabled')
-    
-    // TODO: Implementar hot reload si es necesario
-    // Fastify no tiene hot reload built-in, se puede usar nodemon externamente
-  }
+  // Note: Hot reload is already logged in startServer function
+  // TODO: Implementar hot reload si es necesario
+  // Fastify no tiene hot reload built-in, se puede usar nodemon externamente
 }
 
 // 🎯 Función para producción

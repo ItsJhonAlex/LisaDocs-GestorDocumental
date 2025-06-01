@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { documentService } from '../../services/documentService'
 import { workspaceService } from '../../services/workspaceService'
 import { z } from 'zod'
+import { LogMessages } from '../../utils/logger'
 
 // 📋 Schema para filtros específicos de Intendencia
 const intendenciaFiltersSchema = z.object({
@@ -347,14 +348,11 @@ export async function intendenciaRoutes(fastify: FastifyInstance): Promise<void>
   })
 
   // 🎯 Log específico de Intendencia
-  fastify.log.info({
-    workspace: 'Intendencia',
-    routes: [
-      'GET /documents - Territorial documents with filters',
-      'GET /territories - Territorial management info',
-      'GET /dashboard - Territorial dashboard metrics'
-    ]
-  }, '🏛️ Intendencia workspace routes registered')
+  fastify.log.info(LogMessages.workspaceRoutes('Intendencia', [
+    'GET /documents - Territorial documents with filters',
+    'GET /territories - Territorial management info',
+    'GET /dashboard - Territorial dashboard metrics'
+  ]))
 }
 
 // 🔧 Funciones auxiliares específicas de Intendencia

@@ -7,6 +7,7 @@ import { comisionesRoutes } from './comisiones'
 import { workspaceService } from '../../services/workspaceService'
 import { WorkspaceType } from '../../generated/prisma'
 import { z } from 'zod'
+import { LogMessages } from '../../utils/logger'
 
 // 📋 Schema de validación para parámetros de workspace
 const workspaceParamsSchema = z.object({
@@ -352,8 +353,8 @@ export async function workspaceRoutes(
   await fastify.register(intendenciaRoutes, { prefix: '/workspaces/intendencia' })
   await fastify.register(comisionesRoutes, { prefix: '/workspaces/comisiones-cf' })
 
-  // 🎯 Log de rutas registradas
-  fastify.log.info({
+  // 📊 Log de todas las rutas de workspace registradas  
+  fastify.log.info(LogMessages.workspaceRoutesComplete({
     routes: {
       general: 'GET /api/workspaces - List all workspaces',
       details: 'GET /api/workspaces/:workspace - Workspace details',
@@ -367,5 +368,5 @@ export async function workspaceRoutes(
         comisiones: '/api/workspaces/comisiones-cf/* - Comisiones CF specific routes'
       }
     }
-  }, '🏢 Workspace routes registered successfully')
+  }))
 }

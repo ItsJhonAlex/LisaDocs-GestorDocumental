@@ -168,7 +168,13 @@ export function getFastifyConfig() {
         options: {
           colorize: true,
           translateTime: 'HH:MM:ss Z',
-          ignore: 'pid,hostname'
+          ignore: 'pid,hostname',
+          // 🎯 Configuración limpia para Windows
+          singleLine: false,
+          hideObject: false,
+          // 🔧 Configuración más simple para evitar problemas de codificación
+          messageFormat: '{time} [{level}] {msg}',
+          errorLikeObjectKeys: ['err', 'error']
         }
       } : undefined
     },

@@ -1,5 +1,4 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
-import { appConfig } from '../config/app'
 
 // 📊 Interface para el contexto de logging
 export interface LogContext {
@@ -33,9 +32,6 @@ export interface StructuredLog {
 
 // 🎯 Plugin de logging para Fastify
 export async function loggingMiddleware(fastify: FastifyInstance): Promise<void> {
-  
-  // 🔧 Decorar request con contexto de logging
-  fastify.decorateRequest('logContext', {} as LogContext)
   
   // 📊 Hook para inicializar logging en cada request
   fastify.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -89,9 +85,9 @@ export async function loggingMiddleware(fastify: FastifyInstance): Promise<void>
       message: logMessage,
       context: logContext,
       timestamp: new Date().toISOString(),
-      environment: appConfig.server.environment,
-      service: appConfig.app.name,
-      version: appConfig.app.version
+      environment: process.env.NODE_ENV || 'development',
+      service: 'LisaDocs',
+      version: '1.0.0'
     }
     
     // 📊 Log con el nivel apropiado
@@ -124,13 +120,13 @@ export async function loggingMiddleware(fastify: FastifyInstance): Promise<void>
         statusCode: reply.statusCode || 500
       },
       timestamp: new Date().toISOString(),
-      environment: appConfig.server.environment,
-      service: appConfig.app.name,
-      version: appConfig.app.version,
+      environment: process.env.NODE_ENV || 'development',
+      service: 'LisaDocs',
+      version: '1.0.0',
       error: {
         name: error.name,
         message: error.message,
-        stack: appConfig.server.isDevelopment ? error.stack : undefined
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       }
     }
     
@@ -185,9 +181,9 @@ function logWithContext(
     message,
     context: context as LogContext,
     timestamp: new Date().toISOString(),
-    environment: appConfig.server.environment,
-    service: appConfig.app.name,
-    version: appConfig.app.version
+    environment: process.env.NODE_ENV || 'development',
+    service: 'LisaDocs',
+    version: '1.0.0'
   }
   
   this.log[level](structuredLog, message)
@@ -204,13 +200,13 @@ function logError(
     message: `Error: ${error.message}`,
     context: context as LogContext,
     timestamp: new Date().toISOString(),
-    environment: appConfig.server.environment,
-    service: appConfig.app.name,
-    version: appConfig.app.version,
+    environment: process.env.NODE_ENV || 'development',
+    service: 'LisaDocs',
+    version: '1.0.0',
     error: {
       name: error.name,
       message: error.message,
-      stack: appConfig.server.isDevelopment ? error.stack : undefined
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     }
   }
   
@@ -242,9 +238,9 @@ function logAudit(
       timestamp: new Date().toISOString()
     },
     timestamp: new Date().toISOString(),
-    environment: appConfig.server.environment,
-    service: appConfig.app.name,
-    version: appConfig.app.version
+    environment: process.env.NODE_ENV || 'development',
+    service: 'LisaDocs',
+    version: '1.0.0'
   }
   
   this.log.info(auditLog, `🔍 Audit: ${action} by user ${userId}`)
@@ -274,6 +270,7 @@ declare module 'fastify' {
   export interface FastifyRequest {
     logContext: LogContext
     startTime: number
+    _logContext?: LogContext  // 🔧 Propiedad privada para el decorador
   }
 }
 
@@ -294,7 +291,7 @@ export const loggingConfig = {
   
   // 📊 Configuración de sampling
   sampling: {
-    enabled: appConfig.server.isProduction,
+    enabled: process.env.NODE_ENV === 'production',
     rate: 0.1, // 10% en producción
     alwaysLogErrors: true
   }

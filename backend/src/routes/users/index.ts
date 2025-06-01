@@ -4,6 +4,7 @@ import { createRoute } from './create'
 import { updateRoute } from './update'
 import { profileRoute } from './profile'
 import { permissionsRoute } from './permissions'
+import { LogMessages } from '../../utils/logger'
 
 // 👥 Plugin principal para rutas de usuarios
 export async function userRoutes(
@@ -34,7 +35,7 @@ export async function userRoutes(
   await fastify.register(permissionsRoute)
 
   // 🎯 Información sobre las rutas registradas
-  fastify.log.info({
+  fastify.log.info(LogMessages.userRoutes({
     routes: {
       list: 'GET /api/users - List users with filters (admin)',
       stats: 'GET /api/users/stats - User statistics (admin)',
@@ -49,5 +50,5 @@ export async function userRoutes(
       getMyPermissions: 'GET /api/users/permissions/my - Get current user permissions',
       permissionsMatrix: 'GET /api/users/permissions/matrix - Permissions matrix (admin)'
     }
-  }, '👥 User routes registered successfully')
+  }), '👥 User routes registered successfully')
 }

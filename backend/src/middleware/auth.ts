@@ -3,6 +3,7 @@ import fp from 'fastify-plugin';
 import { verifyAccessToken, extractTokenFromHeader, isTokenBlacklisted } from '../utils/jwt';
 import { authService } from '../services/authService';
 import { AuthenticatedUser } from '../types/auth';
+import { LogMessages } from '../utils/logger';
 
 // Extender el tipo de Request para incluir user y authToken
 declare module 'fastify' {
@@ -101,8 +102,8 @@ export const authMiddleware = fp(async function authPlugin(fastify: FastifyInsta
   // 🔧 Decorar la instancia de Fastify con el método authenticate
   fastify.decorate('authenticate', authenticate);
   
-  // 📝 Log de registro del plugin
-  fastify.log.info('🔐 Authentication middleware registered successfully');
+  // 📝 Log de éxito
+  fastify.log.info(LogMessages.authMiddleware());
 }, {
   name: 'auth-middleware',
   dependencies: []

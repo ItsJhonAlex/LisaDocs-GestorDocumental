@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { documentService } from '../../services/documentService'
 import { workspaceService } from '../../services/workspaceService'
 import { z } from 'zod'
+import { LogMessages } from '../../utils/logger'
 
 // 📋 Schema para filtros específicos de Comisiones CF
 const comisionesFiltersSchema = z.object({
@@ -457,15 +458,12 @@ export async function comisionesRoutes(fastify: FastifyInstance): Promise<void> 
   })
 
   // 🎯 Log específico de Comisiones CF
-  fastify.log.info({
-    workspace: 'Comisiones CF',
-    routes: [
-      'GET /documents - Oversight documents with filters',
-      'GET /investigations - Active investigations',
-      'GET /dashboard - Oversight dashboard',
-      'GET /reports - Oversight and compliance reports'
-    ]
-  }, '🔍 Comisiones CF workspace routes registered')
+  fastify.log.info(LogMessages.workspaceRoutes('Comisiones CF', [
+    'GET /documents - Oversight documents with filters',
+    'GET /investigations - Active investigations',
+    'GET /dashboard - Oversight dashboard',
+    'GET /reports - Oversight and compliance reports'
+  ]))
 }
 
 // 🔧 Funciones auxiliares específicas de Comisiones CF

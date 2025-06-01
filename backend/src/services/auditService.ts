@@ -23,14 +23,11 @@ export interface AuditLogEntry {
 }
 
 // 🔧 Interfaces para tipos de Prisma
-interface PrismaAuditLog {
+interface PrismaDocumentActivity {
   id: string
   userId: string
+  documentId: string
   action: string
-  resource: string | null
-  resourceId: string | null
-  workspace: string | null
-  level: string
   ipAddress: string | null
   userAgent: string | null
   details: any
@@ -44,7 +41,7 @@ interface PrismaAuditLog {
 }
 
 interface PrismaGroupByLevel {
-  level: string
+  action: string
   _count: number
 }
 
@@ -54,7 +51,7 @@ interface PrismaGroupByAction {
 }
 
 interface PrismaGroupByWorkspace {
-  workspace: string | null
+  action: string
   _count: number
 }
 
@@ -143,12 +140,12 @@ export class AuditService {
       if (endDate) where.createdAt = { ...where.createdAt, lte: new Date(endDate) }
       if (userId) where.userId = userId
       if (action) where.action = { contains: action, mode: 'insensitive' }
-      if (workspace) where.workspace = workspace
-      if (level) where.level = level
+      // Note: workspace filtering will be handled through document relationship
+      // Note: level filtering is not available in documentActivity table
 
       // 📊 Obtener logs y total
       const [logs, total] = await Promise.all([
-        prisma.auditLog.findMany({
+        prisma.documentActivity.findMany({
           where,
           include: {
             user: {
@@ -158,27 +155,34 @@ export class AuditService {
                 email: true,
                 role: true
               }
+            },
+            document: {
+              select: {
+                id: true,
+                title: true,
+                workspace: true
+              }
             }
           },
           orderBy: { createdAt: 'desc' },
           skip: offset,
           take: limit
         }),
-        prisma.auditLog.count({ where })
+        prisma.documentActivity.count({ where })
       ])
 
       // 📈 Generar resumen
       const summary = await this.generateLogsSummary(where)
 
       // 📋 Formatear logs
-      const formattedLogs: AuditLogEntry[] = logs.map((log: PrismaAuditLog) => ({
+      const formattedLogs: AuditLogEntry[] = logs.map((log: any) => ({
         id: log.id,
         userId: log.userId,
         action: log.action,
-        resource: log.resource || undefined,
-        resourceId: log.resourceId || undefined,
-        workspace: log.workspace || undefined,
-        level: log.level as 'info' | 'warning' | 'error',
+        resource: 'document',
+        resourceId: log.documentId,
+        workspace: log.document?.workspace,
+        level: 'info', // Default level since not stored in documentActivity
         ipAddress: log.ipAddress || undefined,
         userAgent: log.userAgent || undefined,
         details: log.details as Record<string, any>,
@@ -218,10 +222,18 @@ export class AuditService {
       const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
       // 📊 Obtener actividad del usuario
-      const activity = await prisma.auditLog.findMany({
+      const activity = await prisma.documentActivity.findMany({
         where: {
           userId,
           createdAt: { gte: startDate }
+        },
+        include: {
+          document: {
+            select: {
+              workspace: true,
+              title: true
+            }
+          }
         },
         orderBy: { createdAt: 'desc' },
         take: includeDetails ? 500 : 50
@@ -234,14 +246,14 @@ export class AuditService {
       const riskAssessment = await this.assessUserRisk(userId, activity, statistics)
 
       // 📋 Formatear actividad
-      const formattedActivity: AuditLogEntry[] = activity.map((log: PrismaAuditLog) => ({
+      const formattedActivity: AuditLogEntry[] = activity.map((log: any) => ({
         id: log.id,
         userId: log.userId,
         action: log.action,
-        resource: log.resource || undefined,
-        resourceId: log.resourceId || undefined,
-        workspace: log.workspace || undefined,
-        level: log.level as 'info' | 'warning' | 'error',
+        resource: 'document',
+        resourceId: log.documentId,
+        workspace: log.document?.workspace,
+        level: 'info',
         ipAddress: log.ipAddress || undefined,
         userAgent: log.userAgent || undefined,
         details: log.details as Record<string, any>,
@@ -448,19 +460,24 @@ export class AuditService {
       const startDate = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000)
 
       // 📊 Overview general
-      const [totalLogs, totalUsers, totalActions] = await Promise.all([
-        prisma.auditLog.count({
+      const [totalLogs, uniqueUsersData, uniqueActionsData] = await Promise.all([
+        prisma.documentActivity.count({
           where: { createdAt: { gte: startDate } }
         }),
-        prisma.auditLog.count({
+        prisma.documentActivity.groupBy({
+          by: ['userId'],
           where: { createdAt: { gte: startDate } },
-          distinct: ['userId']
+          _count: true
         }),
-        prisma.auditLog.count({
+        prisma.documentActivity.groupBy({
+          by: ['action'],
           where: { createdAt: { gte: startDate } },
-          distinct: ['action']
+          _count: true
         })
       ])
+
+      const totalUsers = uniqueUsersData.length
+      const totalActions = uniqueActionsData.length
 
       const overview = {
         totalLogs,
@@ -513,20 +530,27 @@ export class AuditService {
     } = {}
   ): Promise<void> {
     try {
-      await prisma.auditLog.create({
-        data: {
-          userId,
-          action,
-          resource: options.resource,
-          resourceId: options.resourceId,
-          workspace: options.workspace,
-          level: options.level || 'info',
-          ipAddress: options.ipAddress,
-          userAgent: options.userAgent,
-          details: details,
-          createdAt: new Date()
-        }
-      })
+      // Solo registrar si hay un documento asociado (ya que documentActivity requiere documentId)
+      if (options.resourceId && options.resource === 'document') {
+        await prisma.documentActivity.create({
+          data: {
+            userId,
+            documentId: options.resourceId,
+            action,
+            ipAddress: options.ipAddress,
+            userAgent: options.userAgent,
+            details: details,
+            createdAt: new Date()
+          }
+        })
+      }
+      // Para otras acciones sin documento, las registramos en el log pero no en BD
+      else {
+        console.log(`📝 Audit action logged: ${action} by user ${userId}`, {
+          ...details,
+          ...options
+        })
+      }
 
     } catch (error) {
       console.error('❌ Error logging audit action:', error)
@@ -538,42 +562,48 @@ export class AuditService {
 
   private async generateLogsSummary(where: any): Promise<Record<string, any>> {
     const [
-      byLevel,
       byAction,
-      byWorkspace
+      recentActions
     ] = await Promise.all([
-      prisma.auditLog.groupBy({
-        by: ['level'],
-        where,
-        _count: true
-      }),
-      prisma.auditLog.groupBy({
+      prisma.documentActivity.groupBy({
         by: ['action'],
         where,
         _count: true,
         orderBy: { _count: { action: 'desc' } },
         take: 10
       }),
-      prisma.auditLog.groupBy({
-        by: ['workspace'],
-        where: { ...where, workspace: { not: null } },
-        _count: true
+      prisma.documentActivity.findMany({
+        where,
+        include: {
+          document: {
+            select: {
+              workspace: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 100
       })
     ])
 
+    // Generar estadísticas por workspace desde los documentos
+    const workspaceStats: Record<string, number> = {}
+    recentActions.forEach(activity => {
+      const workspace = activity.document?.workspace || 'unknown'
+      workspaceStats[workspace] = (workspaceStats[workspace] || 0) + 1
+    })
+
     return {
-      byLevel: byLevel.reduce((acc: Record<string, number>, item: PrismaGroupByLevel) => {
-        acc[item.level] = item._count
-        return acc
-      }, {} as Record<string, number>),
+      byLevel: {
+        info: recentActions.length, // Todas las actividades se consideran 'info'
+        warning: 0,
+        error: 0
+      },
       topActions: byAction.map((item: PrismaGroupByAction) => ({
         action: item.action,
         count: item._count
       })),
-      byWorkspace: byWorkspace.reduce((acc: Record<string, number>, item: PrismaGroupByWorkspace) => {
-        acc[item.workspace || 'unknown'] = item._count
-        return acc
-      }, {} as Record<string, number>)
+      byWorkspace: workspaceStats
     }
   }
 

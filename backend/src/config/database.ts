@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../generated/prisma'
 
 // 🎯 Singleton de Prisma Client
 declare global {
@@ -198,4 +198,4 @@ export const databaseConfig = {
 
 // 🎯 Exportaciones principales
 export default prisma
-export { PrismaClient } from '@prisma/client'
+export { PrismaClient } from '../generated/prisma'

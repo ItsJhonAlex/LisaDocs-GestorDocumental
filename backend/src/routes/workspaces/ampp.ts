@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { documentService } from '../../services/documentService'
 import { workspaceService } from '../../services/workspaceService'
 import { z } from 'zod'
+import { LogMessages } from '../../utils/logger'
 
 // 📋 Schema para filtros específicos de AMPP
 const amppFiltersSchema = z.object({
@@ -431,15 +432,12 @@ export async function amppRoutes(fastify: FastifyInstance): Promise<void> {
   })
 
   // 🎯 Log específico de AMPP
-  fastify.log.info({
-    workspace: 'AMPP',
-    routes: [
-      'GET /documents - Municipal documents with filters',
-      'GET /municipalities - Municipalities management',
-      'GET /dashboard - Municipal dashboard metrics',
-      'GET /reports - Municipal reports and analytics'
-    ]
-  }, '🏛️ AMPP workspace routes registered')
+  fastify.log.info(LogMessages.workspaceRoutes('AMPP', [
+    'GET /documents - Municipal documents with filters',
+    'GET /municipalities - Municipalities management',
+    'GET /dashboard - Municipal dashboard metrics',
+    'GET /reports - Municipal reports and analytics'
+  ]))
 }
 
 // 🔧 Funciones auxiliares específicas de AMPP

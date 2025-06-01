@@ -107,65 +107,6 @@ export async function notificationRoutes(fastify: FastifyInstance): Promise<void
     }
   })
 
-  // ✅ PUT /notifications/:id/read - Marcar notificación como leída
-  fastify.route({
-    method: 'PUT',
-    url: '/notifications/:id/read',
-    schema: {
-      params: {
-        type: 'object',
-        properties: {
-          id: { type: 'string', format: 'uuid' }
-        },
-        required: ['id']
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                success: { type: 'boolean' },
-                readAt: { type: 'string' }
-              }
-            }
-          }
-        }
-      }
-    },
-
-    handler: async (request: FastifyRequest<{
-      Params: { id: string }
-    }>, reply: FastifyReply) => {
-      try {
-        const user = (request as any).user
-        const { id } = request.params
-        const { notificationService } = require('../../services/notificationService')
-
-        // ✅ Marcar como leída
-        const result = await notificationService.markAsRead(id, user.id)
-
-        return reply.status(200).send({
-          success: true,
-          message: 'Notification marked as read successfully',
-          data: result
-        })
-
-      } catch (error: any) {
-        console.error('❌ Mark as read error:', error)
-        
-        return reply.status(500).send({
-          success: false,
-          error: 'Internal server error',
-          details: 'Failed to mark notification as read'
-        })
-      }
-    }
-  })
-
   // 📊 GET /notifications/stats - Estadísticas de notificaciones
   fastify.route({
     method: 'GET',

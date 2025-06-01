@@ -2,7 +2,9 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { documentService } from '../../services/documentService'
 import { workspaceService } from '../../services/workspaceService'
 import { userService } from '../../services/userService'
+import { auditService } from '../../services/auditService'
 import { z } from 'zod'
+import { LogMessages } from '../../utils/logger'
 
 // 📋 Schema para filtros específicos de Presidencia
 const presidenciaFiltersSchema = z.object({
@@ -468,15 +470,12 @@ export async function presidenciaRoutes(fastify: FastifyInstance): Promise<void>
   })
 
   // 🎯 Log específico de Presidencia
-  fastify.log.info({
-    workspace: 'Presidencia',
-    routes: [
-      'GET /documents - Executive documents with high-level filters',
-      'GET /dashboard - Executive dashboard with system oversight',
-      'GET /audit - System audit logs and security oversight',
-      'GET /reports - Executive reports and analytics'
-    ]
-  }, '👑 Presidencia workspace routes registered')
+  fastify.log.info(LogMessages.workspaceRoutes('Presidencia', [
+    'GET /documents - Executive documents with high-level filters',
+    'GET /dashboard - Executive dashboard with system oversight',
+    'GET /audit - System audit logs and security oversight',
+    'GET /reports - Executive reports and analytics'
+  ]))
 }
 
 // 🔧 Funciones auxiliares específicas de Presidencia
