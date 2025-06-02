@@ -371,14 +371,42 @@ async function startServer(): Promise<ServerContext> {
     // 🏗️ Crear servidor
     const server = await createServer()
     
-    // 🚀 Iniciar servidor
-    const port = parseInt(process.env.PORT || '3000')
-    const host = process.env.HOST || '0.0.0.0'
+    // 🚀 Iniciar servidor - CORREGIDO para evitar problemas con IPv6 y permisos
+    let port = parseInt(process.env.PORT || '8080')
+    const envHost = process.env.HOST || '127.0.0.1'
     
-    await server.listen({ 
-      port, 
-      host: process.env.NODE_ENV === 'production' ? host : 'localhost'
-    })
+    // 🎯 Configuración del host según el entorno
+    // En desarrollo usamos 127.0.0.1 (IPv4) para evitar problemas con IPv6 en Windows
+    // En producción usamos la variable de entorno HOST
+    const host = process.env.NODE_ENV === 'production' ? envHost : '127.0.0.1'
+    
+    // 🔄 Intentar múltiples puertos si hay conflictos
+    const maxRetries = 5
+    let retries = 0
+    let serverStarted = false
+    
+    while (!serverStarted && retries < maxRetries) {
+      try {
+        await server.listen({ 
+          port, 
+          host
+        })
+        serverStarted = true
+      } catch (error: any) {
+        if (error.code === 'EADDRINUSE' || error.code === 'EACCES') {
+          retries++
+          const oldPort = port
+          port = port + retries // Intentar con el siguiente puerto
+          server.log.warn(`Puerto ${oldPort} no disponible, intentando con puerto ${port}...`)
+          
+          if (retries >= maxRetries) {
+            throw new Error(`No se pudo iniciar el servidor después de ${maxRetries} intentos. Puertos probados: ${parseInt(process.env.PORT || '8080')} - ${port}. Error: ${error.message}`)
+          }
+        } else {
+          throw error
+        }
+      }
+    }
 
     const context: ServerContext = {
       server,
@@ -391,6 +419,8 @@ async function startServer(): Promise<ServerContext> {
     // 📢 Log adicional para desarrollo
     if (process.env.NODE_ENV === 'development') {
       server.log.info(LogMessages.hotReload())
+      server.log.info(`🌐 API disponible en: http://${host}:${port}`)
+      server.log.info(`📚 Documentación disponible en: http://${host}:${port}/docs`)
     }
 
     // 🛑 Configurar shutdown graceful

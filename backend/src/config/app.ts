@@ -3,7 +3,7 @@ export const appConfig = {
   // 🚀 Configuración del servidor
   server: {
     host: process.env.HOST || '0.0.0.0',
-    port: parseInt(process.env.PORT || '3000'),
+    port: parseInt(process.env.PORT || '3001'),
     environment: process.env.NODE_ENV || 'development',
     isDevelopment: process.env.NODE_ENV === 'development',
     isProduction: process.env.NODE_ENV === 'production',

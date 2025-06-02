@@ -4,6 +4,8 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:alt": "set PORT=8081&& tsx watch src/server.ts",
+    "dev:safe": "set PORT=3333&& set HOST=localhost&& tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "db:generate": "prisma generate",
