@@ -1,259 +1,303 @@
-import { useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/store/authStore';
-import { resetAllStores } from '@/store';
+import { useState, useEffect } from 'react';
 
 /**
- * Hook personalizado para manejar la autenticación
- * Proporciona funcionalidades adicionales como navegación automática,
- * verificación de tokens y utilidades de autenticación
+ * 🎯 Tipos de autenticación
  */
-export const useAuth = () => {
-  const navigate = useNavigate();
-  
-  // 🎯 Selectores del store de auth - usando la forma correcta de Zustand
-  const user = useAuthStore((state) => state.user);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const isLoading = useAuthStore((state) => state.isLoading);
-  const error = useAuthStore((state) => state.error);
-  const tokens = useAuthStore((state) => state.tokens);
-  
-  // 🚀 Acciones del store - extraídas individualmente para estabilidad
-  const login = useAuthStore((state) => state.login);
-  const logout = useAuthStore((state) => state.logout);
-  const refreshTokens = useAuthStore((state) => state.refreshTokens);
-  const updateProfile = useAuthStore((state) => state.updateProfile);
-  const updatePreferences = useAuthStore((state) => state.updatePreferences);
-  const setUser = useAuthStore((state) => state.setUser);
-  const setTokens = useAuthStore((state) => state.setTokens);
-  const setLoading = useAuthStore((state) => state.setLoading);
-  const setError = useAuthStore((state) => state.setError);
-  const clearError = useAuthStore((state) => state.clearError);
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  workspaces: string[];
+  avatar?: string;
+  isActive?: boolean;
+}
 
-  // 📊 Derivar valores de user de forma estable con useMemo
-  const userRole = useMemo(() => user?.role, [user?.role]);
-  const userWorkspaces = useMemo(() => user?.workspaces || [], [user?.workspaces]);
-  const userPreferences = useMemo(() => user?.preferences, [user?.preferences]);
+interface AuthState {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  error: string | null;
+}
 
-  // 🔐 Login con navegación automática - MEMOIZADO
-  const loginWithRedirect = useCallback(async (email: string, password: string, redirectTo?: string) => {
-    const result = await login(email, password);
-    
-    if (result.success) {
-      navigate(redirectTo || '/dashboard');
-    }
-    
-    return result;
-  }, [login, navigate]);
+// 🔑 Mock data para el usuario (en producción vendría del backend)
+const mockUser: User = {
+  id: 'current-user',
+  name: 'Jonathan Rodriguez',
+  email: 'itsjhonalex@gmail.com',
+  role: 'administrador',
+  workspaces: ['presidencia', 'cam', 'ampp', 'intendencia', 'comisiones_cf'],
+  avatar: undefined,
+  isActive: true
+};
 
-  // 🚪 Logout con limpieza completa - MEMOIZADO
-  const logoutWithRedirect = useCallback(async (redirectTo?: string) => {
-    await logout();
-    resetAllStores();
-    navigate(redirectTo || '/login');
-  }, [logout, navigate]);
+/**
+ * 🔐 Hook de autenticación
+ * 
+ * Gestiona el estado de autenticación del usuario y proporciona
+ * utilidades para verificar roles y permisos.
+ */
+export function useAuth() {
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    isLoading: true,
+    isAuthenticated: false,
+    error: null
+  });
 
-  // 🎯 Utilidades de autorización - MEMOIZADAS
-  const hasRole = useCallback((role: string | string[]) => {
-    if (!userRole) return false;
-    
-    if (Array.isArray(role)) {
-      return role.includes(userRole);
-    }
-    
-    return userRole === role;
-  }, [userRole]);
-
-  const hasWorkspace = useCallback((workspace: string | string[]) => {
-    if (!userWorkspaces || userWorkspaces.length === 0) return false;
-    
-    if (Array.isArray(workspace)) {
-      return workspace.some(w => userWorkspaces.includes(w));
-    }
-    
-    return userWorkspaces.includes(workspace);
-  }, [userWorkspaces]);
-
-  const isAdmin = useCallback(() => hasRole('administrador'), [hasRole]);
-  
-  const canAccessWorkspace = useCallback((workspace: string) => {
-    return isAdmin() || hasWorkspace(workspace);
-  }, [isAdmin, hasWorkspace]);
-
-  const canManageUsers = useCallback(() => {
-    return hasRole(['administrador', 'presidente']);
-  }, [hasRole]);
-
-  const canUploadDocuments = useCallback(() => {
-    return isAuthenticated; // Todos los usuarios autenticados pueden subir documentos
-  }, [isAuthenticated]);
-
-  const canDeleteDocuments = useCallback(() => {
-    return hasRole(['administrador', 'presidente', 'vicepresidente']);
-  }, [hasRole]);
-
-  // 📊 Estado del usuario - MEMOIZADO
-  const userInfo = useMemo(() => ({
-    id: user?.id,
-    name: user?.name,
-    email: user?.email,
-    role: userRole,
-    workspaces: userWorkspaces,
-    isActive: user?.isActive,
-    lastLogin: user?.lastLoginAt,
-    preferences: userPreferences,
-  }), [user, userRole, userWorkspaces, userPreferences]);
-
-  // 🎨 Preferencias con helpers - MEMOIZADAS
-  const themePreference = userPreferences?.theme || 'system';
-  const languagePreference = userPreferences?.language || 'es';
-  const notificationsEnabled = userPreferences?.notifications ?? true;
-
-  const updateTheme = useCallback((theme: 'light' | 'dark' | 'system') => {
-    return updatePreferences({ theme });
-  }, [updatePreferences]);
-
-  const updateLanguage = useCallback((language: 'es' | 'en') => {
-    return updatePreferences({ language });
-  }, [updatePreferences]);
-
-  const toggleNotifications = useCallback(() => {
-    return updatePreferences({ notifications: !notificationsEnabled });
-  }, [updatePreferences, notificationsEnabled]);
-
-  const updateDashboardPreferences = useCallback((dashboardPrefs: Partial<{
-    showStats: boolean;
-    showRecentDocuments: boolean;
-    showNotifications: boolean;
-  }>) => {
-    if (!userPreferences) {
-      return { success: false, error: 'No hay preferencias de usuario disponibles' };
-    }
-
-    const currentDashboard = userPreferences.dashboard || {
-      showStats: true,
-      showRecentDocuments: true,
-      showNotifications: true,
+  // 🔄 Simular carga inicial del usuario
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        // Simular delay de carga
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // En producción: verificar token y obtener datos del usuario
+        const token = localStorage.getItem('auth_token');
+        
+        console.log('🔍 Debug loadUser:', {
+          token,
+          mockUser
+        });
+        
+        if (token) {
+          // Mock: siempre carga el usuario de ejemplo
+          console.log('✅ Token encontrado, cargando usuario mock');
+          setAuthState({
+            user: mockUser,
+            isLoading: false,
+            isAuthenticated: true,
+            error: null
+          });
+        } else {
+          console.log('❌ No hay token, estableciendo token automáticamente para desarrollo');
+          // Para desarrollo: establecer token automáticamente
+          localStorage.setItem('auth_token', 'mock_token_12345');
+          setAuthState({
+            user: mockUser,
+            isLoading: false,
+            isAuthenticated: true,
+            error: null
+          });
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+        setAuthState({
+          user: null,
+          isLoading: false,
+          isAuthenticated: false,
+          error: null
+        });
+      }
     };
 
-    return updatePreferences({
-      dashboard: {
-        ...currentDashboard,
-        ...dashboardPrefs,
-      },
+    loadUser();
+  }, []);
+
+  // 🔍 Verificar si el usuario tiene un rol específico
+  const hasRole = (role: string): boolean => {
+    if (!authState.user) return false;
+    return authState.user.role === role;
+  };
+
+  // 🔍 Verificar si el usuario tiene acceso a un workspace
+  const hasWorkspaceAccess = (workspace: string): boolean => {
+    const result = authState.user ? authState.user.workspaces.includes(workspace) : false;
+    console.log('🔍 Debug hasWorkspaceAccess:', {
+      workspace,
+      userWorkspaces: authState.user?.workspaces,
+      result
     });
-  }, [userPreferences, updatePreferences]);
+    return result;
+  };
 
-  // 🔒 Guards para componentes - MEMOIZADOS
-  const requireAuth = useCallback(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return false;
-    }
-    return true;
-  }, [isAuthenticated, navigate]);
+  // 🔍 Verificar si el usuario tiene uno de varios roles
+  const hasAnyRole = (roles: string[]): boolean => {
+    const result = authState.user ? roles.includes(authState.user.role) : false;
+    console.log('🔍 Debug hasAnyRole:', {
+      authStateUser: authState.user,
+      roles,
+      userRole: authState.user?.role,
+      result
+    });
+    return result;
+  };
 
-  const requireRole = useCallback((requiredRole: string | string[]) => {
-    if (!requireAuth()) return false;
-    
-    if (!hasRole(requiredRole)) {
-      navigate('/unauthorized');
-      return false;
-    }
-    return true;
-  }, [requireAuth, hasRole, navigate]);
+  // 🔍 Verificar si es administrador
+  const isAdmin = (): boolean => {
+    return hasRole('administrador');
+  };
 
-  const requireWorkspace = useCallback((requiredWorkspace: string | string[]) => {
-    if (!requireAuth()) return false;
-    
-    if (!hasWorkspace(requiredWorkspace)) {
-      navigate('/unauthorized');
-      return false;
+  // 🔍 Verificar si puede gestionar usuarios
+  const canManageUsers = (): boolean => {
+    return hasAnyRole(['administrador', 'presidente']);
+  };
+
+  // 🔍 Verificar permisos específicos según rol
+  const hasPermission = (permission: string): boolean => {
+    if (!authState.user) return false;
+
+    const { role } = authState.user;
+
+    // Administradores tienen todos los permisos
+    if (role === 'administrador') return true;
+
+    // Mapeo de permisos por rol
+    const rolePermissions: Record<string, string[]> = {
+      presidente: [
+        'view_all_documents',
+        'archive_documents',
+        'manage_presidencia',
+        'view_cam',
+        'view_ampp',
+        'view_intendencia'
+      ],
+      vicepresidente: [
+        'view_all_documents',
+        'view_cam',
+        'view_ampp',
+        'view_intendencia',
+        'manage_presidencia'
+      ],
+      secretario_cam: [
+        'view_cam',
+        'manage_cam',
+        'archive_cam_documents',
+        'view_presidencia'
+      ],
+      secretario_ampp: [
+        'view_ampp',
+        'manage_ampp',
+        'archive_ampp_documents',
+        'view_presidencia'
+      ],
+      secretario_cf: [
+        'view_comisiones_cf',
+        'manage_comisiones_cf',
+        'archive_cf_documents',
+        'view_presidencia'
+      ],
+      intendente: [
+        'view_intendencia',
+        'manage_intendencia',
+        'archive_intendencia_documents',
+        'view_presidencia'
+      ],
+      cf_member: [
+        'view_comisiones_cf'
+      ]
+    };
+
+    const userPermissions = rolePermissions[role] || [];
+    return userPermissions.includes(permission);
+  };
+
+  // 📝 Función de login (mock)
+  const login = async (email: string, password: string, redirectTo?: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+      
+      // Simular llamada al API
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Mock: validación simple
+      if (!email || !password) {
+        const error = 'Email y contraseña son requeridos';
+        setAuthState(prev => ({ ...prev, isLoading: false, error }));
+        return { success: false, error };
+      }
+      
+      if (password.length < 6) {
+        const error = 'La contraseña debe tener al menos 6 caracteres';
+        setAuthState(prev => ({ ...prev, isLoading: false, error }));
+        return { success: false, error };
+      }
+      
+      // Mock: cualquier email válido es aceptado
+      localStorage.setItem('auth_token', 'mock_token_12345');
+      
+      // En producción: usar redirectTo para redirigir después del login
+      if (redirectTo) {
+        console.log('Redirect to:', redirectTo);
+      }
+      
+      setAuthState({
+        user: mockUser,
+        isLoading: false,
+        isAuthenticated: true,
+        error: null
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Login error:', error);
+      const errorMsg = 'Error interno del servidor';
+      setAuthState(prev => ({ ...prev, isLoading: false, error: errorMsg }));
+      return { success: false, error: errorMsg };
     }
-    return true;
-  }, [requireAuth, hasWorkspace, navigate]);
+  };
+
+  // 🧹 Limpiar errores
+  const clearError = () => {
+    setAuthState(prev => ({ ...prev, error: null }));
+  };
+
+  // 🚪 Función de logout
+  const logout = () => {
+    localStorage.removeItem('auth_token');
+    setAuthState({
+      user: null,
+      isLoading: false,
+      isAuthenticated: false,
+      error: null
+    });
+  };
+
+  // 🔄 Actualizar datos del usuario
+  const updateUser = (userData: Partial<User>) => {
+    if (authState.user) {
+      setAuthState(prev => ({
+        ...prev,
+        user: { ...prev.user!, ...userData }
+      }));
+    }
+  };
 
   return {
-    // 📊 Estado
-    user: userInfo,
-    isAuthenticated,
-    isLoading,
-    error,
-    tokens,
+    // Estado
+    user: authState.user,
+    isLoading: authState.isLoading,
+    isAuthenticated: authState.isAuthenticated,
+    error: authState.error,
     
-    // 🚀 Acciones principales
-    login: loginWithRedirect,
-    logout: logoutWithRedirect,
-    updateProfile,
-    refreshTokens,
-    
-    // 🎨 Preferencias
-    preferences: {
-      theme: themePreference,
-      language: languagePreference,
-      notifications: notificationsEnabled,
-      dashboard: userPreferences?.dashboard,
-    },
-    updateTheme,
-    updateLanguage,
-    toggleNotifications,
-    updateDashboardPreferences,
-    updatePreferences,
-    
-    // 🎯 Autorización
+    // Funciones de verificación
     hasRole,
-    hasWorkspace,
+    hasWorkspaceAccess,
+    hasAnyRole,
+    hasPermission,
     isAdmin,
-    canAccessWorkspace,
     canManageUsers,
-    canUploadDocuments,
-    canDeleteDocuments,
     
-    // 🔒 Guards
-    requireAuth,
-    requireRole,
-    requireWorkspace,
-    
-    // 🛠️ Utilidades
-    setUser,
-    setTokens,
-    setLoading,
-    setError,
-    clearError,
+    // Acciones
+    login,
+    logout,
+    updateUser,
+    clearError
   };
-};
+}
 
 /**
  * 🎯 Hook simplificado para verificar permisos específicos
  */
 export const usePermissions = () => {
-  const { hasRole, hasWorkspace, isAdmin } = useAuth();
+  const { hasAnyRole, hasWorkspaceAccess, isAdmin } = useAuth();
   
   return {
-    hasRole,
-    hasWorkspace,
+    hasAnyRole,
+    hasWorkspaceAccess,
     isAdmin,
-    canManageUsers: hasRole(['administrador', 'presidente']),
+    canManageUsers: hasAnyRole(['administrador', 'presidente']),
     canUploadDocuments: true, // Todos los usuarios autenticados
-    canDeleteDocuments: hasRole(['administrador', 'presidente', 'vicepresidente']),
-  };
-};
-
-/**
- * 👤 Hook simplificado para obtener información del usuario actual
- */
-export const useCurrentUser = () => {
-  const user = useAuthStore((state) => state.user);
-  const userRole = useAuthStore((state) => state.user?.role);
-  const userWorkspaces = useAuthStore((state) => state.user?.workspaces || []);
-  const userPreferences = useAuthStore((state) => state.user?.preferences);
-  
-  return {
-    user,
-    role: userRole,
-    workspaces: userWorkspaces,
-    preferences: userPreferences,
-    isActive: user?.isActive,
-    lastLogin: user?.lastLoginAt,
+    canDeleteDocuments: hasAnyRole(['administrador', 'presidente', 'vicepresidente']),
   };
 };

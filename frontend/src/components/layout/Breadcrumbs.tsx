@@ -1,6 +1,7 @@
 import { ChevronRight, Home } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useBreadcrumbs, useNavigation } from '@/hooks/useNavigation';
 
 // 🎯 Tipo para breadcrumb item
 interface BreadcrumbItem {
@@ -39,113 +40,35 @@ const routeLabels: Record<string, string> = {
   audit: 'Auditoría',
 };
 
-export function Breadcrumbs() {
-  const location = useLocation();
-  
-  // 🍞 Generar breadcrumbs desde la ruta actual
-  const generateBreadcrumbs = (): BreadcrumbItem[] => {
-    const pathSegments = location.pathname.split('/').filter(Boolean);
-    const breadcrumbs: BreadcrumbItem[] = [];
-    
-    // 🏠 Siempre empezar con Home/Dashboard
-    breadcrumbs.push({
-      label: 'Dashboard',
-      href: '/dashboard',
-    });
-    
-    // 🛣️ Si estamos en dashboard, no agregar más
-    if (location.pathname === '/' || location.pathname === '/dashboard') {
-      breadcrumbs[0].isActive = true;
-      return breadcrumbs;
-    }
-    
-    // 🗂️ Construir breadcrumbs paso a paso
-    let currentPath = '';
-    
-    pathSegments.forEach((segment, index) => {
-      currentPath += `/${segment}`;
-      const isLast = index === pathSegments.length - 1;
-      
-      // 🎯 Obtener label apropiado
-      let label = routeLabels[segment] || segment;
-      
-      // 🎨 Casos especiales para rutas anidadas
-      if (segment === 'workspaces' && pathSegments[index + 1]) {
-        // Para espacios de trabajo, no mostrar "workspaces" sino directamente el espacio
-        return;
-      }
-      
-      if (pathSegments[index - 1] === 'workspaces') {
-        label = routeLabels[segment] || segment;
-      }
-      
-      // 🆔 Si es un ID (usualmente UUIDs o números), intentar obtener un label más descriptivo
-      if (isUUID(segment) || isNumeric(segment)) {
-        // TODO: Aquí podríamos hacer una lookup para obtener el nombre real
-        // Por ejemplo, para un documento podríamos obtener su nombre
-        if (pathSegments[index - 1] === 'documents') {
-          label = 'Documento';
-        } else if (pathSegments[index - 1] === 'users') {
-          label = 'Usuario';
-        } else {
-          label = 'Detalle';
-        }
-      }
-      
-      // 🎯 Capitalizar primera letra si no está en el mapeo
-      if (!routeLabels[segment] && !isUUID(segment) && !isNumeric(segment)) {
-        label = segment.charAt(0).toUpperCase() + segment.slice(1);
-      }
-      
-      breadcrumbs.push({
-        label,
-        href: isLast ? undefined : currentPath,
-        isActive: isLast,
-      });
-    });
-    
-    return breadcrumbs;
-  };
-  
-  const breadcrumbs = generateBreadcrumbs();
-  
-  // 🎯 Si solo hay un breadcrumb (Dashboard), no mostrar nada
-  if (breadcrumbs.length <= 1 && breadcrumbs[0]?.isActive) {
+export function Breadcrumbs({ className }: BreadcrumbsProps) {
+  const breadcrumbs = useBreadcrumbs();
+  const { navigateWithLoading } = useNavigation();
+
+  // 🏠 No mostrar breadcrumbs en la página de inicio
+  if (breadcrumbs.length <= 1) {
     return null;
   }
-  
+
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center space-x-1 text-sm">
-      <ol className="flex items-center space-x-1">
+    <nav className={cn('flex items-center space-x-2 text-sm', className)} aria-label="Breadcrumb">
+      <ol className="flex items-center space-x-2">
         {breadcrumbs.map((item, index) => (
-          <li key={index} className="flex items-center">
-            {/* 🔗 Link o texto */}
-            {item.href ? (
-              <Link
-                to={item.href}
-                className={cn(
-                  "flex items-center space-x-1 hover:text-foreground transition-colors",
-                  "text-muted-foreground"
-                )}
-              >
-                {/* 🏠 Icono home para el primer item */}
-                {index === 0 && <Home className="w-4 h-4" />}
-                <span>{item.label}</span>
-              </Link>
-            ) : (
-              <span className={cn(
-                "flex items-center space-x-1",
-                item.isActive ? "text-foreground font-medium" : "text-muted-foreground"
-              )}>
-                {/* 🏠 Icono home para el primer item */}
-                {index === 0 && <Home className="w-4 h-4" />}
-                <span>{item.label}</span>
-              </span>
+          <li key={item.href} className="flex items-center">
+            {index > 0 && (
+              <ChevronRight className="w-4 h-4 text-muted-foreground mx-2" />
             )}
             
-            {/* ➡️ Separador */}
-            {index < breadcrumbs.length - 1 && (
-              <ChevronRight className="w-4 h-4 mx-2 text-muted-foreground" />
+            {item.isLast ? (
+              <span className="font-medium text-foreground">
+                {item.label}
+              </span>
+            ) : (
+              <button
+                onClick={() => navigateWithLoading(item.href)}
+                className="text-muted-foreground hover:text-foreground transition-colors hover:underline"
+              >
+                {item.label}
+              </button>
             )}
           </li>
         ))}

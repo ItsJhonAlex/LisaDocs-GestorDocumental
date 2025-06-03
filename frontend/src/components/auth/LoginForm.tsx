@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Mail, Lock, Crown, Building, Briefcase, Scale } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 
 // 🎯 Schema de validación con Zod
@@ -67,25 +66,25 @@ export function LoginForm({ onSuccess, redirectTo, className }: LoginFormProps) 
   };
 
   return (
-    <Card className={`w-full max-w-md mx-auto ${className}`}>
-      <CardHeader className="text-center space-y-4">
-        <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-          <LogIn className="w-6 h-6 text-primary" />
+    <div className={`w-full p-6 ${className}`}>
+      {/* 🎉 Header elegante */}
+      <div className="text-center space-y-4 mb-8">
+        <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
+          <LogIn className="w-8 h-8 text-primary" />
         </div>
         <div className="space-y-2">
-          <CardTitle className="text-2xl font-bold">¡Bienvenido a LisaDocs! 👋</CardTitle>
-          <CardDescription>
-            Inicia sesión para acceder al sistema de gestión documental
-          </CardDescription>
+          <h1 className="text-3xl font-bold text-foreground">¡Bienvenido de vuelta! 👋</h1>
+          <p className="text-muted-foreground">
+            Accede a LisaDocs para gestionar tus documentos
+          </p>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="space-y-4">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* 📧 Campo Email */}
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium">
-              Email
+          <Label htmlFor="email" className="text-sm font-medium text-foreground">
+            Correo Electrónico
             </Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -93,19 +92,22 @@ export function LoginForm({ onSuccess, redirectTo, className }: LoginFormProps) 
                 id="email"
                 type="email"
                 placeholder="tu@email.com"
-                className="pl-10"
+              className="pl-10 h-12 bg-background border-border focus:border-primary"
                 {...register('email')}
                 aria-invalid={errors.email ? 'true' : 'false'}
               />
             </div>
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+            <p className="text-sm text-destructive flex items-center gap-1">
+              <span className="w-1 h-1 bg-destructive rounded-full"></span>
+              {errors.email.message}
+            </p>
             )}
           </div>
 
           {/* 🔒 Campo Contraseña */}
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-sm font-medium">
+          <Label htmlFor="password" className="text-sm font-medium text-foreground">
               Contraseña
             </Label>
             <div className="relative">
@@ -114,14 +116,14 @@ export function LoginForm({ onSuccess, redirectTo, className }: LoginFormProps) 
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
-                className="pl-10 pr-10"
+              className="pl-10 pr-12 h-12 bg-background border-border focus:border-primary"
                 {...register('password')}
                 aria-invalid={errors.password ? 'true' : 'false'}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
                 aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
               >
                 {showPassword ? (
@@ -132,21 +134,27 @@ export function LoginForm({ onSuccess, redirectTo, className }: LoginFormProps) 
               </button>
             </div>
             {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
+            <p className="text-sm text-destructive flex items-center gap-1">
+              <span className="w-1 h-1 bg-destructive rounded-full"></span>
+              {errors.password.message}
+            </p>
             )}
           </div>
 
           {/* 🚨 Error general */}
           {error && (
-            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-              <p className="text-sm text-destructive">{error}</p>
+          <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-destructive rounded-full"></div>
+              <p className="text-sm text-destructive font-medium">{error}</p>
+            </div>
             </div>
           )}
 
           {/* 🚀 Botón de envío */}
           <Button
             type="submit"
-            className="w-full"
+          className="w-full h-12 text-base font-medium"
             disabled={isLoading || !isValid}
             size="lg"
           >
@@ -165,16 +173,42 @@ export function LoginForm({ onSuccess, redirectTo, className }: LoginFormProps) 
         </form>
 
         {/* 🔗 Enlaces adicionales */}
-        <div className="text-center text-sm text-muted-foreground">
+      <div className="mt-8 pt-6 border-t border-border">
+        <div className="text-center space-y-4">
+          <div className="text-sm text-muted-foreground">
           <p>
             ¿Olvidaste tu contraseña?{' '}
-            <button className="text-primary hover:underline font-medium">
+              <button className="text-primary hover:underline font-medium transition-colors">
               Recuperar cuenta
             </button>
           </p>
         </div>
-      </CardContent>
-    </Card>
+          
+          {/* 🏢 Información del sistema */}
+          <div className="pt-4 text-xs text-muted-foreground">
+            <p className="font-medium mb-3 text-foreground">Módulos del Sistema:</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
+                <Crown className="w-3 h-3 text-primary" />
+                <span>Presidencia</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
+                <Building className="w-3 h-3 text-primary" />
+                <span>Intendencia</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
+                <Briefcase className="w-3 h-3 text-primary" />
+                <span>CAM & AMPP</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
+                <Scale className="w-3 h-3 text-primary" />
+                <span>Comisiones CF</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

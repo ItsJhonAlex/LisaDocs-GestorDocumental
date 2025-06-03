@@ -26,19 +26,37 @@ export function ProtectedRoute({
     isAuthenticated, 
     isLoading, 
     hasRole, 
-    hasWorkspace
+    hasAnyRole,
+    hasWorkspaceAccess
   } = useAuth();
 
   // 🎯 Memoizar las verificaciones de permisos para evitar re-evaluaciones
   const roleCheck = useMemo(() => {
     if (!requiredRole) return true;
+    
+    // Si es un array, usar hasAnyRole
+    if (Array.isArray(requiredRole)) {
+      return hasAnyRole(requiredRole);
+    }
+    
+    // Si es un string, verificar el rol específico
     return hasRole(requiredRole);
-  }, [requiredRole, hasRole]);
+  }, [requiredRole, hasRole, hasAnyRole]);
 
   const workspaceCheck = useMemo(() => {
     if (!requiredWorkspace) return true;
-    return hasWorkspace(requiredWorkspace) || hasRole('administrador');
-  }, [requiredWorkspace, hasWorkspace, hasRole]);
+    
+    // Administradores tienen acceso a todo
+    if (hasRole('administrador')) return true;
+    
+    // Si es un array, verificar si tiene acceso a alguno de los workspaces
+    if (Array.isArray(requiredWorkspace)) {
+      return requiredWorkspace.some(workspace => hasWorkspaceAccess(workspace));
+    }
+    
+    // Si es un string, verificar el workspace específico
+    return hasWorkspaceAccess(requiredWorkspace);
+  }, [requiredWorkspace, hasWorkspaceAccess, hasRole]);
 
   // ⏳ Mostrar loading mientras se verifica la autenticación
   if (isLoading) {

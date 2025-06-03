@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { Breadcrumbs } from './Breadcrumbs';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
 // 🎨 Props del Layout
 interface LayoutProps {
@@ -18,12 +19,16 @@ export function Layout({ children, className }: LayoutProps) {
   const sidebarOpen = useUIStore(state => state.sidebarOpen);
   const sidebarCollapsed = useUIStore(state => state.sidebarCollapsed);
   const setSidebarOpen = useUIStore(state => state.setSidebarOpen);
-  const { isAuthenticated, requireAuth } = useAuth();
+  const isNavigating = useUIStore(state => state.isNavigating); // Estado de navegación
+  const { isAuthenticated } = useAuth();
 
   // 🔒 Verificar autenticación
   useEffect(() => {
-    if (!requireAuth()) return;
-  }, [requireAuth]);
+    // En producción: redirigir a login si no está autenticado
+    if (!isAuthenticated) {
+      // window.location.href = '/login';
+    }
+  }, [isAuthenticated]);
 
   // 📱 Cerrar sidebar en móvil cuando se hace clic fuera
   const handleOverlayClick = () => {
@@ -55,6 +60,22 @@ export function Layout({ children, className }: LayoutProps) {
 
   return (
     <div className={cn("min-h-screen bg-background", className)}>
+      {/* 🔄 Loading overlay para navegación */}
+      {isNavigating && (
+        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <LoadingSpinner 
+              size="lg" 
+              variant="dots"
+              className="text-primary" 
+            />
+            <p className="text-sm text-muted-foreground animate-pulse">
+              Cargando página...
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 📱 Overlay para móvil */}
       {sidebarOpen && (
         <div
@@ -102,18 +123,6 @@ export function Layout({ children, className }: LayoutProps) {
               </p>
               <div className="flex items-center space-x-4 mt-2 sm:mt-0">
                 <span>Versión 1.0.0</span>
-                <span>•</span>
-                <span>
-                  Desarrollado por{' '}
-                  <a
-                    href="https://github.com/ItsJhonAlex"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline font-medium"
-                  >
-                    Jonathan Rodriguez
-                  </a>
-                </span>
               </div>
             </div>
           </div>
@@ -128,24 +137,35 @@ export function AuthLayout({ children, className }: LayoutProps) {
   return (
     <div className={cn(
       "min-h-screen flex items-center justify-center",
-      "bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50",
-      "dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900",
+      "bg-background",
       className
     )}>
-      {/* 🎨 Fondo decorativo */}
+      {/* 🎨 Elementos decorativos sutiles */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl" />
+        {/* Patrón de puntos sutil */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.05)_1px,transparent_0)] [background-size:16px_16px]" />
+        
+        {/* Cards decorativos sutiles */}
+        <div className="absolute top-20 left-20 w-32 h-32 bg-muted/20 rounded-2xl rotate-12 blur-sm" />
+        <div className="absolute bottom-20 right-20 w-24 h-24 bg-muted/30 rounded-xl -rotate-12 blur-sm" />
+        <div className="absolute top-1/2 left-10 w-16 h-40 bg-muted/15 rounded-xl rotate-45 blur-sm" />
+        <div className="absolute top-1/3 right-16 w-20 h-20 bg-muted/25 rounded-full blur-sm" />
       </div>
 
       {/* 📱 Contenido */}
       <div className="relative z-10 w-full max-w-md mx-auto p-6">
-        {children}
+        {/* 🎨 Card de fondo para el contenido */}
+        <div className="bg-card border border-border rounded-lg shadow-lg backdrop-blur-sm">
+          {children}
+        </div>
       </div>
 
       {/* 🏷️ Branding sutil */}
-      <div className="absolute bottom-4 left-4 text-xs text-muted-foreground">
-        LisaDocs v1.0.0
+      <div className="absolute bottom-4 left-4 right-4 text-center">
+        <div className="inline-flex items-center space-x-2 text-xs text-muted-foreground bg-background/80 px-3 py-1 rounded-full border border-border">
+          <div className="w-2 h-2 bg-primary rounded-full"></div>
+          <span>LisaDocs v1.0.0 - Sistema de Gestión Documental</span>
+        </div>
       </div>
     </div>
   );

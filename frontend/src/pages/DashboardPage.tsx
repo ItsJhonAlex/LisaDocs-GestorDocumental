@@ -1,4 +1,4 @@
-import { DashboardLayout } from '@/components/layout/Layout';
+import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +18,7 @@ export function DashboardPage() {
   const { user, canManageUsers } = useAuth();
 
   return (
-    <DashboardLayout>
+    <Layout>
       <div className="space-y-6">
         {/* 🎉 Bienvenida personalizada */}
         <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 rounded-lg border">
@@ -219,6 +219,6 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </Layout>
   );
 } 

@@ -10,6 +10,7 @@ import { DocumentsPage } from '@/pages/DocumentsPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { WorkspacesPage } from '@/pages/WorkspacesPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { UnauthorizedPage } from '@/pages/UnauthorizedPage';
 
@@ -59,16 +60,15 @@ export function App() {
           </ProtectedRoute>
         } />
         
-        <Route path="/workspaces/*" element={
+        {/* 🏢 Rutas de espacios de trabajo */}
+        <Route path="/workspaces/:workspace" element={
           <ProtectedRoute>
-            <Layout>
-              <Routes>
-                {/* TODO: Agregar rutas de espacios de trabajo */}
-                <Route path="*" element={<div>Espacios de trabajo</div>} />
-              </Routes>
-            </Layout>
+            <WorkspacesPage />
           </ProtectedRoute>
         } />
+        
+        {/* 🔄 Redirección automática al primer workspace disponible */}
+        <Route path="/workspaces" element={<Navigate to="/workspaces/presidencia" replace />} />
         
         <Route path="/profile" element={
           <ProtectedRoute>
@@ -97,6 +97,22 @@ export function App() {
           <ProtectedRoute requiredRole={['administrador', 'presidente', 'vicepresidente']}>
             <Layout>
               <div>Reportes</div>
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/archive" element={
+          <ProtectedRoute requiredRole={['administrador', 'presidente', 'vicepresidente']}>
+            <Layout>
+              <div>Archivo de documentos</div>
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/notifications" element={
+          <ProtectedRoute requiredRole="administrador">
+            <Layout>
+              <div>Gestión de notificaciones</div>
             </Layout>
           </ProtectedRoute>
         } />

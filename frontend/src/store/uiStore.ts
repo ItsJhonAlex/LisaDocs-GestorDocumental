@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { devtools } from 'zustand/middleware';
 
-// 🎯 Tipos para el store de UI
-interface UIState {
+// 🎯 Estado base (solo datos, sin funciones)
+interface UIBaseState {
   // 🎨 Tema y apariencia
   theme: 'light' | 'dark' | 'system';
   sidebarOpen: boolean;
@@ -11,6 +11,7 @@ interface UIState {
   
   // 📱 Estado de la interfaz
   isLoading: boolean;
+  isNavigating: boolean;
   loadingMessage: string;
   error: string | null;
   
@@ -42,14 +43,34 @@ interface UIState {
   // 📊 Vista de lista/grilla
   viewMode: 'list' | 'grid' | 'table';
   
-  // 🚀 Acciones
-  setTheme: (theme: 'light' | 'dark' | 'system') => void;
-  toggleSidebar: () => void;
-  setSidebarOpen: (open: boolean) => void;
-  toggleSidebarCollapsed: () => void;
-  setSidebarCollapsed: (collapsed: boolean) => void;
+  // 📱 Responsive
+  isMobile: boolean;
   
+  // 📊 Configuraciones de UI
+  preferences: {
+    animationsEnabled: boolean;
+    compactMode: boolean;
+    showTooltips: boolean;
+  };
+}
+
+// 🎯 Acciones del store
+interface UIActions {
+  // 🗂️ Sidebar actions
+  setSidebarOpen: (open: boolean) => void;
+  toggleSidebar: () => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebarCollapsed: () => void;
+  
+  // 🎨 Theme actions
+  setTheme: (theme: UIBaseState['theme']) => void;
+  
+  // 📱 Responsive actions
+  setIsMobile: (isMobile: boolean) => void;
+  
+  // 🔄 Loading actions
   setLoading: (loading: boolean, message?: string) => void;
+  setNavigating: (navigating: boolean) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
   
@@ -77,16 +98,23 @@ interface UIState {
   
   setViewMode: (mode: 'list' | 'grid' | 'table') => void;
   
+  // 📊 Preferences actions
+  updatePreferences: (preferences: Partial<UIBaseState['preferences']>) => void;
+  
   resetUI: () => void;
 }
 
-// 🎨 Estado inicial
-const initialState = {
+// 🏪 Store combinado: estado + acciones
+type UIStore = UIBaseState & UIActions;
+
+// 🎨 Estado inicial (solo datos, sin funciones)
+const initialState: UIBaseState = {
   theme: 'system' as const,
   sidebarOpen: true,
   sidebarCollapsed: false,
   
   isLoading: false,
+  isNavigating: false,
   loadingMessage: '',
   error: null,
   
@@ -113,10 +141,18 @@ const initialState = {
   searchQuery: '',
   activeFilters: {},
   viewMode: 'list' as const,
+  
+  isMobile: false,
+  
+  preferences: {
+    animationsEnabled: true,
+    compactMode: false,
+    showTooltips: true,
+  },
 };
 
 // ✨ Store de UI con persistencia selectiva
-export const useUIStore = create<UIState>()(
+export const useUIStore = create<UIStore>()(
   devtools(
     persist(
       (set, get) => ({
@@ -133,6 +169,7 @@ export const useUIStore = create<UIState>()(
 
         // ⏳ Loading
         setLoading: (isLoading, loadingMessage = '') => set({ isLoading, loadingMessage }),
+        setNavigating: (isNavigating) => set({ isNavigating }),
 
         // 🔔 Modal de confirmación
         openConfirmDialog: (config) => {
@@ -240,6 +277,14 @@ export const useUIStore = create<UIState>()(
         // 🔴 Error
         setError: (error) => set({ error }),
         clearError: () => set({ error: null }),
+
+        // 📱 Responsive actions
+        setIsMobile: (isMobile) => set({ isMobile }),
+
+        // 📊 Preferences actions
+        updatePreferences: (newPreferences) => set((state) => ({
+          preferences: { ...state.preferences, ...newPreferences }
+        })),
       }),
       {
         name: 'lisadocs-ui-storage',
@@ -247,6 +292,8 @@ export const useUIStore = create<UIState>()(
           theme: state.theme,
           sidebarCollapsed: state.sidebarCollapsed,
           viewMode: state.viewMode,
+          isMobile: state.isMobile,
+          preferences: state.preferences,
         }),
       }
     ),
@@ -258,17 +305,20 @@ export const useUIStore = create<UIState>()(
 
 // 🎯 Selectores para optimizar renders
 export const uiSelectors = {
-  theme: (state: UIState) => state.theme,
-  sidebarOpen: (state: UIState) => state.sidebarOpen,
-  sidebarCollapsed: (state: UIState) => state.sidebarCollapsed,
-  isLoading: (state: UIState) => state.isLoading,
-  loadingMessage: (state: UIState) => state.loadingMessage,
-  error: (state: UIState) => state.error,
-  modals: (state: UIState) => state.modals,
-  confirmDialog: (state: UIState) => state.modals.confirmDialog,
-  userForm: (state: UIState) => state.modals.userForm,
-  documentUpload: (state: UIState) => state.modals.documentUpload,
-  searchQuery: (state: UIState) => state.searchQuery,
-  activeFilters: (state: UIState) => state.activeFilters,
-  viewMode: (state: UIState) => state.viewMode,
+  theme: (state: UIBaseState) => state.theme,
+  sidebarOpen: (state: UIBaseState) => state.sidebarOpen,
+  sidebarCollapsed: (state: UIBaseState) => state.sidebarCollapsed,
+  isLoading: (state: UIBaseState) => state.isLoading,
+  loadingMessage: (state: UIBaseState) => state.loadingMessage,
+  error: (state: UIBaseState) => state.error,
+  modals: (state: UIBaseState) => state.modals,
+  confirmDialog: (state: UIBaseState) => state.modals.confirmDialog,
+  userForm: (state: UIBaseState) => state.modals.userForm,
+  documentUpload: (state: UIBaseState) => state.modals.documentUpload,
+  searchQuery: (state: UIBaseState) => state.searchQuery,
+  activeFilters: (state: UIBaseState) => state.activeFilters,
+  viewMode: (state: UIBaseState) => state.viewMode,
+  isMobile: (state: UIBaseState) => state.isMobile,
+  preferences: (state: UIBaseState) => state.preferences,
+  isNavigating: (state: UIBaseState) => state.isNavigating,
 };

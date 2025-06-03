@@ -23,6 +23,7 @@ import { Separator } from '@/components/ui/separator';
 
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigation } from '@/hooks/useNavigation';
 
 // 🎯 Tipos para navegación
 interface NavigationItem {
@@ -47,7 +48,8 @@ export function Sidebar() {
   const toggleSidebarCollapsed = useUIStore(state => state.toggleSidebarCollapsed);
   const setSidebarOpen = useUIStore(state => state.setSidebarOpen);
   
-  const { user, hasRole, hasWorkspace } = useAuth();
+  const { user, hasRole, hasWorkspaceAccess, hasAnyRole } = useAuth();
+  const { navigateWithLoading } = useNavigation();
 
   // 🎯 Configuración de navegación
   const navigationGroups: NavigationGroup[] = [
@@ -154,12 +156,12 @@ export function Sidebar() {
   // 🎯 Verificar si un item debe mostrarse
   const shouldShowItem = (item: NavigationItem): boolean => {
     // Verificar roles
-    if (item.roles && !hasRole(item.roles)) {
+    if (item.roles && !hasAnyRole(item.roles)) {
       return false;
     }
 
     // Verificar espacios de trabajo
-    if (item.workspaces && !hasWorkspace(item.workspaces)) {
+    if (item.workspaces && !item.workspaces.some(ws => hasWorkspaceAccess(ws))) {
       // Los administradores pueden ver todos los espacios
       if (!hasRole('administrador')) {
         return false;
@@ -172,7 +174,7 @@ export function Sidebar() {
   // 🎯 Verificar si un grupo debe mostrarse
   const shouldShowGroup = (group: NavigationGroup): boolean => {
     // Verificar roles del grupo
-    if (group.roles && !hasRole(group.roles)) {
+    if (group.roles && !hasAnyRole(group.roles)) {
       return false;
     }
 
@@ -277,7 +279,11 @@ export function Sidebar() {
                         <Link
                           key={item.href}
                           to={item.href}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.preventDefault();
+                            // Usar navegación con loading
+                            navigateWithLoading(item.href);
+                            
                             // Cerrar sidebar en móvil al navegar
                             if (window.innerWidth < 1024) {
                               setSidebarOpen(false);
@@ -318,16 +324,6 @@ export function Sidebar() {
               );
             })}
           </nav>
-
-          {/* 🦶 Footer del sidebar */}
-          {!sidebarCollapsed && (
-            <div className="p-4 border-t">
-              <div className="text-center text-xs text-muted-foreground">
-                <p>Desarrollado con ❤️</p>
-                <p>por Jonathan Rodriguez</p>
-              </div>
-            </div>
-          )}
         </div>
       </aside>
     </>
