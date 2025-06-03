@@ -177,6 +177,15 @@ export function AMPPDashboard() {
   const canArchiveOthers = hasAnyRole(['administrador', 'presidente', 'secretario_ampp']);
   const canManage = hasAnyRole(['administrador', 'secretario_ampp']);
 
+  // ✅ Debug para verificar permisos
+  console.log('🔍 AMPP Permissions Debug:', {
+    userRole: user?.role,
+    canUpload,
+    canArchiveOthers,
+    canManage,
+    hasAdminRole: hasAnyRole(['administrador'])
+  });
+
   // 🔄 Cargar documentos del workspace AMPP
   useEffect(() => {
     const loadDocuments = async () => {
@@ -257,7 +266,7 @@ export function AMPPDashboard() {
         workspace: 'ampp',
         tags: fileData.tags || [],
         createdBy: 'current-user',
-        createdByName: user?.name || 'Usuario',
+        createdByName: user?.fullName || 'Usuario',
         createdAt: new Date().toISOString(),
         fileUrl: `/uploads/ampp/${fileData.file.name}`
       }));
@@ -483,7 +492,7 @@ export function AMPPDashboard() {
                   { id: 'secretario-ampp-user', name: 'Carmen Vega (Secretaria AMPP)' },
                   { id: 'presidente-ampp-user', name: 'Sandra López (Presidenta AMPP)' },
                   { id: 'diputado-user', name: 'Luis Herrera (Diputado)' },
-                  { id: 'current-user', name: user?.name || 'Usuario Actual' }
+                  { id: 'current-user', name: user?.fullName || 'Usuario Actual' }
                 ]}
                 availableTags={['acta', 'asamblea', 'proyecto', 'ley', 'resolución', 'dictamen']}
               />

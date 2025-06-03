@@ -177,6 +177,15 @@ export function ComisionesDashboard() {
   const canArchiveOthers = hasAnyRole(['administrador', 'presidente', 'secretario_cf']);
   const canManage = hasAnyRole(['administrador', 'secretario_cf']);
 
+  // ✅ Debug para verificar permisos
+  console.log('🔍 Comisiones CF Permissions Debug:', {
+    userRole: user?.role,
+    canUpload,
+    canArchiveOthers,
+    canManage,
+    hasAdminRole: hasAnyRole(['administrador'])
+  });
+
   // 🔄 Cargar documentos del workspace Comisiones CF
   useEffect(() => {
     const loadDocuments = async () => {
@@ -263,7 +272,7 @@ export function ComisionesDashboard() {
         workspace: 'comisiones_cf',
         tags: fileData.tags || [],
         createdBy: 'current-user',
-        createdByName: user?.name || 'Usuario',
+         createdByName: user?.fullName || 'Usuario',
         createdAt: new Date().toISOString(),
         fileUrl: `/uploads/comisiones_cf/${fileData.file.name}`
       }));
@@ -497,7 +506,7 @@ export function ComisionesDashboard() {
                   { id: 'coordinador-cf3-user', name: 'Carlos Pérez (Coordinador CF3)' },
                   { id: 'medico-user', name: 'Dr. Antonio Silva (CF2)' },
                   { id: 'ingeniero-user', name: 'Ing. Laura Díaz (CF4)' },
-                  { id: 'current-user', name: user?.name || 'Usuario Actual' }
+                  { id: 'current-user', name: user?.fullName || 'Usuario Actual' }
                 ]}
                 availableTags={['informe', 'acta', 'dictamen', 'propuesta', 'memoria', 'cf1', 'cf2', 'cf3', 'cf4', 'cf5', 'cf6', 'cf7', 'cf8']}
               />

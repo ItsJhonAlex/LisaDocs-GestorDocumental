@@ -177,6 +177,15 @@ export function IntendenciaDashboard() {
   const canArchiveOthers = hasAnyRole(['administrador', 'presidente', 'intendente']);
   const canManage = hasAnyRole(['administrador', 'intendente']);
 
+  // ✅ Debug para verificar permisos
+  console.log('🔍 Intendencia Permissions Debug:', {
+    userRole: user?.role,
+    canUpload,
+    canArchiveOthers,
+    canManage,
+    hasAdminRole: hasAnyRole(['administrador'])
+  });
+
   // 🔄 Cargar documentos del workspace Intendencia
   useEffect(() => {
     const loadDocuments = async () => {
@@ -261,7 +270,7 @@ export function IntendenciaDashboard() {
         workspace: 'intendencia',
         tags: fileData.tags || [],
         createdBy: 'current-user',
-        createdByName: user?.name || 'Usuario',
+        createdByName: user?.fullName || 'Usuario',
         createdAt: new Date().toISOString(),
         fileUrl: `/uploads/intendencia/${fileData.file.name}`
       }));
@@ -492,7 +501,7 @@ export function IntendenciaDashboard() {
                   { id: 'intendente-user', name: 'Roberto Castro (Intendente)' },
                   { id: 'coordinador-user', name: 'Patricia Morales (Coordinadora)' },
                   { id: 'arquitecto-user', name: 'Fernando Ruiz (Arquitecto Municipal)' },
-                  { id: 'current-user', name: user?.name || 'Usuario Actual' }
+                  { id: 'current-user', name: user?.fullName || 'Usuario Actual' }
                 ]}
                 availableTags={['plan', 'desarrollo', 'informe', 'gestión', 'permisos', 'construcción']}
               />

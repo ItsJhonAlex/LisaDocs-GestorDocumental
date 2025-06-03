@@ -27,11 +27,10 @@ type LoginFormData = z.infer<typeof loginSchema>;
 // 🎨 Props del componente
 interface LoginFormProps {
   onSuccess?: () => void;
-  redirectTo?: string;
   className?: string;
 }
 
-export function LoginForm({ onSuccess, redirectTo, className }: LoginFormProps) {
+export function LoginForm({ onSuccess, className }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading, error, clearError } = useAuth();
 
@@ -50,7 +49,7 @@ export function LoginForm({ onSuccess, redirectTo, className }: LoginFormProps) 
   const onSubmit = async (data: LoginFormData) => {
     clearError(); // Limpiar errores previos
     
-    const result = await login(data.email, data.password, redirectTo);
+    const result = await login(data.email, data.password);
     
     if (result.success) {
       onSuccess?.();
@@ -213,7 +212,7 @@ export function LoginForm({ onSuccess, redirectTo, className }: LoginFormProps) 
 }
 
 // 🎯 Variante compacta para usar en modales
-export function CompactLoginForm({ onSuccess, className }: Omit<LoginFormProps, 'redirectTo'>) {
+export function CompactLoginForm({ onSuccess, className }: LoginFormProps) {
   return (
     <div className={`space-y-4 ${className}`}>
       <div className="text-center space-y-2">

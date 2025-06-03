@@ -8,8 +8,12 @@ import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { DocumentsPage } from '@/pages/DocumentsPage';
 import { UsersPage } from '@/pages/UsersPage';
+import { ReportsPage } from '@/pages/ReportsPage';
+import { ArchivePage } from '@/pages/ArchivePage';
+import { AdminPage } from '@/pages/AdminPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { NotificationsPage } from '@/pages/NotificationsPage';
 import { WorkspacesPage } from '@/pages/WorkspacesPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { UnauthorizedPage } from '@/pages/UnauthorizedPage';
@@ -76,9 +80,14 @@ export function App() {
           </ProtectedRoute>
         } />
         
-        <Route path="/settings" element={
+        <Route path="/settings/*" element={
           <ProtectedRoute requiredRole="administrador">
-            <SettingsPage />
+            <Layout>
+              <Routes>
+                <Route index element={<SettingsPage />} />
+                {/* TODO: Agregar rutas específicas de configuración */}
+              </Routes>
+            </Layout>
           </ProtectedRoute>
         } />
         
@@ -86,8 +95,8 @@ export function App() {
           <ProtectedRoute requiredRole="administrador">
             <Layout>
               <Routes>
-                {/* TODO: Agregar rutas de administración */}
-                <Route path="*" element={<div>Panel de administración</div>} />
+                <Route index element={<AdminPage />} />
+                {/* TODO: Agregar rutas específicas de administración */}
               </Routes>
             </Layout>
           </ProtectedRoute>
@@ -96,7 +105,7 @@ export function App() {
         <Route path="/reports" element={
           <ProtectedRoute requiredRole={['administrador', 'presidente', 'vicepresidente']}>
             <Layout>
-              <div>Reportes</div>
+              <ReportsPage />
             </Layout>
           </ProtectedRoute>
         } />
@@ -104,7 +113,7 @@ export function App() {
         <Route path="/archive" element={
           <ProtectedRoute requiredRole={['administrador', 'presidente', 'vicepresidente']}>
             <Layout>
-              <div>Archivo de documentos</div>
+              <ArchivePage />
             </Layout>
           </ProtectedRoute>
         } />
@@ -112,7 +121,7 @@ export function App() {
         <Route path="/notifications" element={
           <ProtectedRoute requiredRole="administrador">
             <Layout>
-              <div>Gestión de notificaciones</div>
+              <NotificationsPage />
             </Layout>
           </ProtectedRoute>
         } />

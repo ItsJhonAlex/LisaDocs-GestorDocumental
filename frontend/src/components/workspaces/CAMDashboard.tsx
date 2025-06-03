@@ -177,6 +177,15 @@ export function CAMDashboard() {
   const canArchiveOthers = hasAnyRole(['administrador', 'presidente', 'secretario_cam']);
   const canManage = hasAnyRole(['administrador', 'secretario_cam']);
 
+  // ✅ Debug para verificar permisos
+  console.log('🔍 CAM Permissions Debug:', {
+    userRole: user?.role,
+    canUpload,
+    canArchiveOthers,
+    canManage,
+    hasAdminRole: hasAnyRole(['administrador'])
+  });
+
   // 🔄 Cargar documentos del workspace CAM
   useEffect(() => {
     const loadDocuments = async () => {
@@ -257,7 +266,7 @@ export function CAMDashboard() {
         workspace: 'cam',
         tags: fileData.tags || [],
         createdBy: 'current-user',
-        createdByName: user?.name || 'Usuario',
+        createdByName: user?.fullName || 'Usuario',
         createdAt: new Date().toISOString(),
         fileUrl: `/uploads/cam/${fileData.file.name}`
       }));
@@ -483,7 +492,7 @@ export function CAMDashboard() {
                   { id: 'secretario-cam-user', name: 'Elena Rodríguez (Secretaria CAM)' },
                   { id: 'presidente-cam-user', name: 'Miguel Torres (Presidente CAM)' },
                   { id: 'tesorero-user', name: 'Roberto Díaz (Tesorero)' },
-                  { id: 'current-user', name: user?.name || 'Usuario Actual' }
+                  { id: 'current-user', name: user?.fullName || 'Usuario Actual' }
                 ]}
                 availableTags={['acta', 'reunión', 'informe', 'presupuesto', 'resolución', 'ordenanza']}
               />

@@ -177,6 +177,15 @@ export function PresidenciaDashboard() {
   const canArchiveOthers = hasAnyRole(['administrador', 'presidente']);
   const canManage = hasAnyRole(['administrador', 'presidente']);
 
+  // ✅ Debug para verificar permisos
+  console.log('🔍 Presidencia Permissions Debug:', {
+    userRole: user?.role,
+    canUpload,
+    canArchiveOthers,
+    canManage,
+    hasAdminRole: hasAnyRole(['administrador'])
+  });
+
   // 🔄 Cargar documentos del workspace Presidencia
   useEffect(() => {
     const loadDocuments = async () => {
@@ -258,7 +267,7 @@ export function PresidenciaDashboard() {
         workspace: 'presidencia',
         tags: fileData.tags || [],
         createdBy: 'current-user',
-        createdByName: user?.name || 'Usuario',
+        createdByName: user?.fullName || 'Usuario',
         createdAt: new Date().toISOString(),
         fileUrl: `/uploads/presidencia/${fileData.file.name}`
       }));
@@ -480,7 +489,7 @@ export function PresidenciaDashboard() {
                   { id: 'presidente-user', name: 'Carlos Mendoza (Presidente)' },
                   { id: 'vicepresidente-user', name: 'María García (Vicepresidenta)' },
                   { id: 'secretario-user', name: 'Ana López (Secretaria)' },
-                  { id: 'current-user', name: user?.name || 'Usuario Actual' }
+                  { id: 'current-user', name: user?.fullName || 'Usuario Actual' }
                 ]}
                 availableTags={['decreto', 'resolución', 'comunicado', 'informe', 'acta', 'políticas']}
               />

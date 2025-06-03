@@ -30,7 +30,6 @@ export function LoginPage() {
       {/* 🚀 Formulario de login */}
       <LoginForm 
         onSuccess={handleLoginSuccess}
-        redirectTo="/dashboard"
       />
     </AuthLayout>
   );

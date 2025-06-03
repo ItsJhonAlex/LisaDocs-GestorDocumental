@@ -23,7 +23,7 @@ interface WorkspaceSwitchProps {
  * - Control de acceso basado en la matriz de permisos del backend
  */
 export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
-  const { user, hasAnyRole, hasWorkspaceAccess } = useAuth();
+  const { user, hasAnyRole } = useAuth();
 
   // 🛡️ Verificar si el usuario tiene acceso al workspace
   const canAccessWorkspace = (workspace: string): boolean => {
@@ -32,22 +32,37 @@ export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
       workspace,
       userRole: user?.role,
       hasAnyRoleAdmin: hasAnyRole(['administrador']),
-      hasWorkspaceAccessResult: user ? hasWorkspaceAccess(workspace) : 'user null'
     });
     
     if (!user) return false;
 
-    // 🚨 Verificación de emergencia para administradores
-    if (user.role === 'administrador') {
-      console.log('🚨 Emergency admin access granted');
+    // ✅ ADMINISTRADORES: Acceso total inmediato
+    if (user.role === 'administrador' || hasAnyRole(['administrador'])) {
+      console.log('✅ Admin access granted to workspace:', workspace);
       return true;
     }
 
-    // Administrador puede acceder a todo
-    if (hasAnyRole(['administrador'])) return true;
-
-    // Verificar acceso específico según rol y workspace
-    return hasWorkspaceAccess(workspace);
+    // 🎯 OTROS ROLES: Verificar acceso específico según workspace y rol
+    switch (workspace) {
+      case 'presidencia':
+        return hasAnyRole(['presidente', 'vicepresidente', 'secretario_cam', 'secretario_ampp', 'secretario_cf']);
+      
+      case 'cam':
+        return hasAnyRole(['presidente', 'secretario_cam']);
+      
+      case 'ampp':
+        return hasAnyRole(['presidente', 'vicepresidente', 'secretario_ampp']);
+      
+      case 'intendencia':
+        return hasAnyRole(['presidente', 'vicepresidente', 'intendente']);
+      
+      case 'comisiones_cf':
+        return hasAnyRole(['presidente', 'vicepresidente', 'secretario_cf', 'cf_member']);
+      
+      default:
+        // Para workspaces no reconocidos, denegar acceso
+        return false;
+    }
   };
 
   // 🎯 Renderizar el dashboard correspondiente
@@ -62,6 +77,8 @@ export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
               No tienes permisos para acceder al workspace <strong>{currentWorkspace}</strong>.
               <br />
               Contacta con un administrador si necesitas acceso.
+              <br />
+              <small>Tu rol actual: <strong>{user?.role || 'Sin rol'}</strong></small>
             </AlertDescription>
           </Alert>
         </div>

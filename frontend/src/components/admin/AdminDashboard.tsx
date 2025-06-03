@@ -6,13 +6,17 @@ import {
   Settings,
   FileText,
   Database,
-  Lock
+  Lock,
+  UserPlus,
+  Search,
+  Filter
 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 
 import { SystemStats } from './SystemStats';
 import { AuditLog } from './AuditLog';
@@ -57,8 +61,8 @@ const mockAdminStats: AdminStats = {
  * - Auditoría y logs
  * - Configuraciones del sistema
  */
-export function AdminDashboard() {
-  const { user, hasAnyRole } = useAuth();
+export function AdminDashboard({ showHeader = true }: { showHeader?: boolean }) {
+  const { hasAnyRole } = useAuth();
   const [stats] = useState<AdminStats>(mockAdminStats);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -85,25 +89,60 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* 🎯 Header del Dashboard */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Panel de Administración</h1>
-          <p className="text-muted-foreground">
-            Control total del sistema LisaDocs - {user?.role === 'administrador' ? 'Administrador' : 'Presidente'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            Sistema Operativo
-          </Badge>
-          {stats.securityAlerts > 0 && (
-            <Badge variant="destructive">
-              {stats.securityAlerts} Alertas
-            </Badge>
-          )}
-        </div>
-      </div>
+      {/* 🎯 Header del Dashboard de Gestión de Usuarios - Condicional */}
+      {showHeader && (
+        <>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Gestión de Usuarios</h1>
+              <p className="text-muted-foreground">
+                Administra usuarios, roles y permisos del sistema LisaDocs
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Crear Usuario
+              </Button>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  Sistema Operativo
+                </Badge>
+                {stats.securityAlerts > 0 && (
+                  <Badge variant="destructive">
+                    {stats.securityAlerts} Alertas
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 🔍 Barra de búsqueda y filtros */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Búsqueda y Filtros</CardTitle>
+              <CardDescription>
+                Herramientas para encontrar y filtrar usuarios específicos
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar usuarios por nombre, email o rol..."
+                    className="pl-10"
+                  />
+                </div>
+                <Button variant="outline">
+                  <Filter className="w-4 h-4 mr-2" />
+                  Filtros Avanzados
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* 📊 Estadísticas principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -273,4 +312,13 @@ export function AdminDashboard() {
       </Card>
     </div>
   );
+}
+
+/**
+ * 📊 Contenido del Dashboard de Administración (sin header)
+ * 
+ * Versión sin header para usar dentro de layouts que ya tienen su propio header
+ */
+export function AdminContent() {
+  return <AdminDashboard showHeader={false} />;
 }

@@ -1,82 +1,103 @@
 import { useState, useEffect } from 'react';
 
 /**
- * 🎯 Tipos de autenticación
+ * 🎯 Tipos de autenticación actualizados para el backend real
  */
 interface User {
   id: string;
-  name: string;
+  fullName: string;
   email: string;
   role: string;
-  workspaces: string[];
-  avatar?: string;
-  isActive?: boolean;
+  workspace: string;
+  isActive: boolean;
+  lastLoginAt?: string;
+}
+
+interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: string;
 }
 
 interface AuthState {
   user: User | null;
+  tokens: AuthTokens | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
 }
 
-// 🔑 Mock data para el usuario (en producción vendría del backend)
-const mockUser: User = {
-  id: 'current-user',
-  name: 'Jonathan Rodriguez',
-  email: 'itsjhonalex@gmail.com',
-  role: 'administrador',
-  workspaces: ['presidencia', 'cam', 'ampp', 'intendencia', 'comisiones_cf'],
-  avatar: undefined,
-  isActive: true
-};
+// 🌐 URL base del API
+const API_BASE_URL = 'http://localhost:8080/api'; // Ajusta según tu configuración
 
 /**
- * 🔐 Hook de autenticación
+ * 🔐 Hook de autenticación con backend real
  * 
  * Gestiona el estado de autenticación del usuario y proporciona
- * utilidades para verificar roles y permisos.
+ * utilidades para verificar roles y permisos conectando con el backend.
  */
 export function useAuth() {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
+    tokens: null,
     isLoading: true,
     isAuthenticated: false,
     error: null
   });
 
-  // 🔄 Simular carga inicial del usuario
+  // 🔄 Cargar usuario desde token almacenado
   useEffect(() => {
     const loadUser = async () => {
       try {
-        // Simular delay de carga
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // En producción: verificar token y obtener datos del usuario
-        const token = localStorage.getItem('auth_token');
+        const accessToken = localStorage.getItem('accessToken');
+        const userData = localStorage.getItem('userData');
         
         console.log('🔍 Debug loadUser:', {
-          token,
-          mockUser
+          hasAccessToken: !!accessToken,
+          hasUserData: !!userData
         });
         
-        if (token) {
-          // Mock: siempre carga el usuario de ejemplo
-          console.log('✅ Token encontrado, cargando usuario mock');
-          setAuthState({
-            user: mockUser,
-            isLoading: false,
-            isAuthenticated: true,
-            error: null
-          });
+        if (accessToken && userData) {
+          try {
+            const user = JSON.parse(userData);
+            const tokens = {
+              accessToken,
+              refreshToken: localStorage.getItem('refreshToken') || '',
+              expiresIn: localStorage.getItem('expiresIn') || '24h'
+            };
+            
+            console.log('✅ Usuario cargado desde localStorage:', user);
+            
+            setAuthState({
+              user,
+              tokens,
+              isLoading: false,
+              isAuthenticated: true,
+              error: null
+            });
+          } catch (parseError) {
+            console.error('❌ Error parsing stored user data:', parseError);
+            // Limpiar datos corruptos
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('userData');
+            localStorage.removeItem('expiresIn');
+            
+            setAuthState({
+              user: null,
+              tokens: null,
+              isLoading: false,
+              isAuthenticated: false,
+              error: null
+            });
+          }
         } else {
-          console.log('❌ No hay token, estableciendo token automáticamente para desarrollo');
-          // Para desarrollo: establecer token automáticamente
-          localStorage.setItem('auth_token', 'mock_token_12345');
+          console.log('❌ No hay token o datos de usuario almacenados');
           setAuthState({
-            user: mockUser,
+            user: null,
+            tokens: null,
             isLoading: false,
-            isAuthenticated: true,
+            isAuthenticated: false,
             error: null
           });
         }
@@ -84,9 +105,10 @@ export function useAuth() {
         console.error('Error loading user:', error);
         setAuthState({
           user: null,
+          tokens: null,
           isLoading: false,
           isAuthenticated: false,
-          error: null
+          error: 'Error al cargar usuario'
         });
       }
     };
@@ -102,12 +124,21 @@ export function useAuth() {
 
   // 🔍 Verificar si el usuario tiene acceso a un workspace
   const hasWorkspaceAccess = (workspace: string): boolean => {
-    const result = authState.user ? authState.user.workspaces.includes(workspace) : false;
+    if (!authState.user) return false;
+    
+    // Los administradores tienen acceso a todos los workspaces
+    if (authState.user.role === 'administrador') return true;
+    
+    // Para otros roles, verificar el workspace específico o el workspace principal
+    const result = authState.user.workspace === workspace;
+    
     console.log('🔍 Debug hasWorkspaceAccess:', {
       workspace,
-      userWorkspaces: authState.user?.workspaces,
+      userWorkspace: authState.user?.workspace,
+      userRole: authState.user?.role,
       result
     });
+    
     return result;
   };
 
@@ -192,46 +223,57 @@ export function useAuth() {
     return userPermissions.includes(permission);
   };
 
-  // 📝 Función de login (mock)
-  const login = async (email: string, password: string, redirectTo?: string): Promise<{ success: boolean; error?: string }> => {
+  // 📝 Función de login con backend real
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      // Simular llamada al API
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('🔄 Iniciando login con backend...');
       
-      // Mock: validación simple
-      if (!email || !password) {
-        const error = 'Email y contraseña son requeridos';
-        setAuthState(prev => ({ ...prev, isLoading: false, error }));
-        return { success: false, error };
-      }
-      
-      if (password.length < 6) {
-        const error = 'La contraseña debe tener al menos 6 caracteres';
-        setAuthState(prev => ({ ...prev, isLoading: false, error }));
-        return { success: false, error };
-      }
-      
-      // Mock: cualquier email válido es aceptado
-      localStorage.setItem('auth_token', 'mock_token_12345');
-      
-      // En producción: usar redirectTo para redirigir después del login
-      if (redirectTo) {
-        console.log('Redirect to:', redirectTo);
-      }
-      
-      setAuthState({
-        user: mockUser,
-        isLoading: false,
-        isAuthenticated: true,
-        error: null
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
       });
+
+      const data = await response.json();
       
-      return { success: true };
+      if (!response.ok) {
+        const error = data.message || 'Error de autenticación';
+        setAuthState(prev => ({ ...prev, isLoading: false, error }));
+        return { success: false, error };
+      }
+
+      if (data.success && data.data) {
+        const { user, tokens } = data.data;
+        
+        // Guardar en localStorage
+        localStorage.setItem('accessToken', tokens.accessToken);
+        localStorage.setItem('refreshToken', tokens.refreshToken);
+        localStorage.setItem('expiresIn', tokens.expiresIn);
+        localStorage.setItem('userData', JSON.stringify(user));
+        
+        console.log('✅ Login exitoso:', user);
+        
+        setAuthState({
+          user,
+          tokens,
+          isLoading: false,
+          isAuthenticated: true,
+          error: null
+        });
+        
+        return { success: true };
+      } else {
+        const error = data.message || 'Error de autenticación';
+        setAuthState(prev => ({ ...prev, isLoading: false, error }));
+        return { success: false, error };
+      }
     } catch (error) {
       console.error('Login error:', error);
-      const errorMsg = 'Error interno del servidor';
+      const errorMsg = error instanceof Error ? error.message : 'Error de conexión';
       setAuthState(prev => ({ ...prev, isLoading: false, error: errorMsg }));
       return { success: false, error: errorMsg };
     }
@@ -243,22 +285,50 @@ export function useAuth() {
   };
 
   // 🚪 Función de logout
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    setAuthState({
-      user: null,
-      isLoading: false,
-      isAuthenticated: false,
-      error: null
-    });
+  const logout = async () => {
+    try {
+      // Llamar al backend para logout si es necesario
+      const accessToken = localStorage.getItem('accessToken');
+      if (accessToken) {
+        try {
+          await fetch(`${API_BASE_URL}/auth/logout`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+        } catch (logoutError) {
+          console.warn('Error durante logout en backend:', logoutError);
+        }
+      }
+    } catch (error) {
+      console.warn('Error durante logout:', error);
+    } finally {
+      // Limpiar localStorage
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('expiresIn');
+      
+      setAuthState({
+        user: null,
+        tokens: null,
+        isLoading: false,
+        isAuthenticated: false,
+        error: null
+      });
+    }
   };
 
   // 🔄 Actualizar datos del usuario
   const updateUser = (userData: Partial<User>) => {
     if (authState.user) {
+      const updatedUser = { ...authState.user, ...userData };
+      localStorage.setItem('userData', JSON.stringify(updatedUser));
       setAuthState(prev => ({
         ...prev,
-        user: { ...prev.user!, ...userData }
+        user: updatedUser
       }));
     }
   };
@@ -266,6 +336,7 @@ export function useAuth() {
   return {
     // Estado
     user: authState.user,
+    tokens: authState.tokens,
     isLoading: authState.isLoading,
     isAuthenticated: authState.isAuthenticated,
     error: authState.error,
