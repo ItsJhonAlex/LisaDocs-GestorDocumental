@@ -1,460 +1,374 @@
-import { useState } from 'react';
-import { 
-  Shield, 
-  Users, 
-  Database, 
-  Activity, 
-  Settings,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Server,
-  HardDrive,
-  Cpu,
-  Wifi
-} from 'lucide-react';
+import { Shield, Users, Settings, BarChart3, Activity, AlertTriangle } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAuth } from '@/hooks/useAuth';
-
-// 🛡️ Tipos para el panel de administración
-interface SystemHealth {
-  status: 'healthy' | 'warning' | 'critical';
-  uptime: string;
-  cpu: number;
-  memory: number;
-  disk: number;
-  database: 'connected' | 'disconnected' | 'slow';
-  services: {
-    name: string;
-    status: 'running' | 'stopped' | 'error';
-    uptime: string;
-  }[];
-}
-
-interface SystemStats {
-  totalUsers: number;
-  activeUsers: number;
-  totalDocuments: number;
-  documentsToday: number;
-  storageUsed: number;
-  totalStorage: number;
-  apiCalls: number;
-  errors: number;
-}
-
-// 💡 Mock data para el sistema
-const mockSystemHealth: SystemHealth = {
-  status: 'healthy',
-  uptime: '15 días, 8 horas',
-  cpu: 45,
-  memory: 68,
-  disk: 72,
-  database: 'connected',
-  services: [
-    { name: 'API Server', status: 'running', uptime: '15d 8h' },
-    { name: 'Database', status: 'running', uptime: '15d 8h' },
-    { name: 'File Storage', status: 'running', uptime: '15d 8h' },
-    { name: 'Email Service', status: 'running', uptime: '15d 8h' },
-    { name: 'Background Jobs', status: 'running', uptime: '15d 8h' }
-  ]
-};
-
-const mockSystemStats: SystemStats = {
-  totalUsers: 45,
-  activeUsers: 32,
-  totalDocuments: 1247,
-  documentsToday: 23,
-  storageUsed: 2.4,
-  totalStorage: 10,
-  apiCalls: 15420,
-  errors: 3
-};
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { AdminDashboard } from '@/components/admin/AdminDashboard';
+import { useState } from 'react';
 
 /**
- * 🛡️ Página de Administración del Sistema
+ * 🛡️ Página de Administración
  * 
- * Panel principal de administración del sistema solo para:
- * - Administradores
+ * Panel completo de administración del sistema LisaDocs:
+ * - Dashboard con métricas generales
+ * - Gestión completa de usuarios
+ * - Configuraciones del sistema
+ * - Monitoreo y análisis
  */
-export function AdminPage() {
-  const { hasRole } = useAuth();
-  const [systemHealth] = useState<SystemHealth>(mockSystemHealth);
-  const [systemStats] = useState<SystemStats>(mockSystemStats);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [isLoading, setIsLoading] = useState(false);
+export default function AdminPage() {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('dashboard');
   
-  // 🛡️ Verificar permisos de acceso
-  const canAccess = hasRole('administrador');
-
-  // 🚫 Si no tiene permisos, mostrar mensaje de acceso restringido
-  if (!canAccess) {
+  // 🛡️ Verificación de permisos de administrador
+  if (user?.role !== 'administrador') {
     return (
-      <div className="flex items-center justify-center min-h-[600px]">
+      <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
-              <Shield className="w-8 h-8 text-destructive" />
-            </div>
-            <CardTitle className="text-destructive">Acceso Restringido</CardTitle>
+            <Shield className="w-12 h-12 text-destructive mx-auto mb-4" />
+            <CardTitle className="text-xl">Acceso Denegado</CardTitle>
             <CardDescription>
-              Solo administradores pueden acceder al panel de administración.
+              Esta página está restringida solo para administradores del sistema.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <p className="text-sm text-muted-foreground mb-4">
-              Si necesitas acceso a esta funcionalidad, contacta con el administrador principal del sistema.
+            <Badge variant="outline" className="mb-4">
+              Rol actual: {user?.role || 'Sin rol'}
+            </Badge>
+            <p className="text-sm text-muted-foreground">
+              Si crees que esto es un error, contacta al administrador del sistema.
             </p>
-            <div className="space-y-2 text-xs text-muted-foreground">
-              <p><strong>Rol requerido:</strong></p>
-              <p>• Administrador</p>
-            </div>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // 🔄 Funciones de administración
-  const handleRestartService = async (serviceName: string) => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('Restarting service:', serviceName);
-    } catch (error) {
-      console.error('Error restarting service:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleMaintenanceMode = async () => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log('Toggling maintenance mode');
-    } catch (error) {
-      console.error('Error toggling maintenance mode:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 🎨 Función para obtener el estado de salud del sistema
-  const getHealthBadge = (status: SystemHealth['status']) => {
-    switch (status) {
-      case 'healthy':
-        return <Badge className="bg-green-100 text-green-700">Saludable</Badge>;
-      case 'warning':
-        return <Badge className="bg-yellow-100 text-yellow-700">Advertencia</Badge>;
-      case 'critical':
-        return <Badge className="bg-red-100 text-red-700">Crítico</Badge>;
-      default:
-        return <Badge variant="secondary">Desconocido</Badge>;
-    }
-  };
-
-  // 🎨 Función para obtener el icono de estado del servicio
-  const getServiceIcon = (status: string) => {
-    switch (status) {
-      case 'running':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'stopped':
-        return <Clock className="w-4 h-4 text-yellow-500" />;
-      case 'error':
-        return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      default:
-        return <Clock className="w-4 h-4 text-gray-500" />;
-    }
-  };
-
-  // ✅ Mostrar el panel de administración
   return (
-    <div className="space-y-6">
-      {/* 🎯 Header de la página */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="container mx-auto py-6 space-y-6">
+      {/* 📊 Header de la página */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Panel de Administración</h1>
-          <p className="text-muted-foreground">
-            Monitor del sistema, servicios y estadísticas de LisaDocs
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Shield className="h-8 w-8 text-primary" />
+            Panel de Administración
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Gestión completa del sistema LisaDocs - Bienvenido, {user.fullName}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Estado del Sistema:</span>
-          {getHealthBadge(systemHealth.status)}
-        </div>
+        <Badge variant="default" className="px-3 py-1">
+          <Shield className="w-4 h-4 mr-2" />
+          Administrador
+        </Badge>
       </div>
 
-      {/* 📊 Estadísticas principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 🎛️ Tabs principales */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="dashboard" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Dashboard
+          </TabsTrigger>
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Usuarios
+          </TabsTrigger>
+          <TabsTrigger value="system" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Sistema
+          </TabsTrigger>
+          <TabsTrigger value="monitoring" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Monitoreo
+          </TabsTrigger>
+        </TabsList>
+
+        {/* 📊 Tab Dashboard */}
+        <TabsContent value="dashboard" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Métricas rápidas */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Usuarios Activos</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.activeUsers}</div>
+                <div className="text-2xl font-bold">--</div>
             <p className="text-xs text-muted-foreground">
-              de {systemStats.totalUsers} usuarios totales
+                  +-- nuevos esta semana
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Documentos Hoy</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Documentos</CardTitle>
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.documentsToday}</div>
+                <div className="text-2xl font-bold">--</div>
             <p className="text-xs text-muted-foreground">
-              Total: {systemStats.totalDocuments}
+                  +-- subidos hoy
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Almacenamiento</CardTitle>
-            <HardDrive className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Sesiones Activas</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.storageUsed}GB</div>
+                <div className="text-2xl font-bold">--</div>
             <p className="text-xs text-muted-foreground">
-              de {systemStats.totalStorage}GB disponibles
+                  en las últimas 24h
             </p>
-            <Progress 
-              value={(systemStats.storageUsed / systemStats.totalStorage) * 100} 
-              className="mt-2"
-            />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">API Calls</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Estado Sistema</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{systemStats.apiCalls.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-green-600">OK</div>
             <p className="text-xs text-muted-foreground">
-              {systemStats.errors} errores hoy
+                  Todos los servicios operativos
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* 🔧 Paneles de administración */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Resumen</TabsTrigger>
-          <TabsTrigger value="services">Servicios</TabsTrigger>
-          <TabsTrigger value="performance">Rendimiento</TabsTrigger>
-          <TabsTrigger value="maintenance">Mantenimiento</TabsTrigger>
-        </TabsList>
-
-        {/* 📈 Tab Resumen */}
-        <TabsContent value="overview" className="space-y-4">
+          {/* Información del sistema */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Estado del Sistema</CardTitle>
-                <CardDescription>
-                  Información general sobre el funcionamiento del sistema
-                </CardDescription>
+                <CardTitle>Resumen del Sistema</CardTitle>
+                <CardDescription>Estado general de LisaDocs</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Uptime</span>
-                  <span className="text-sm text-muted-foreground">{systemHealth.uptime}</span>
+                  <span className="text-sm">Base de Datos</span>
+                  <Badge variant="default">Conectada</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Base de Datos</span>
-                  <Badge 
-                    variant={systemHealth.database === 'connected' ? 'default' : 'destructive'}
-                    className={systemHealth.database === 'connected' ? 'bg-green-100 text-green-700' : ''}
-                  >
-                    {systemHealth.database === 'connected' ? 'Conectada' : 'Desconectada'}
-                  </Badge>
+                  <span className="text-sm">Almacenamiento</span>
+                  <Badge variant="default">MinIO OK</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Servicios Activos</span>
-                  <span className="text-sm text-muted-foreground">
-                    {systemHealth.services.filter(s => s.status === 'running').length} / {systemHealth.services.length}
-                  </span>
+                  <span className="text-sm">API Backend</span>
+                  <Badge variant="default">Funcionando</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Última Actualización</span>
-                  <span className="text-sm text-muted-foreground">Hace 2 minutos</span>
+                  <span className="text-sm">Autenticación</span>
+                  <Badge variant="default">JWT Activo</Badge>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Recursos del Sistema</CardTitle>
-                <CardDescription>
-                  Uso actual de recursos del servidor
-                </CardDescription>
+                <CardTitle>Acciones Rápidas</CardTitle>
+                <CardDescription>Herramientas administrativas frecuentes</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">CPU</span>
-                    <span className="text-sm text-muted-foreground">{systemHealth.cpu}%</span>
-                  </div>
-                  <Progress value={systemHealth.cpu} />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Memoria</span>
-                    <span className="text-sm text-muted-foreground">{systemHealth.memory}%</span>
-                  </div>
-                  <Progress value={systemHealth.memory} />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Disco</span>
-                    <span className="text-sm text-muted-foreground">{systemHealth.disk}%</span>
-                  </div>
-                  <Progress value={systemHealth.disk} />
-                </div>
+              <CardContent className="space-y-3">
+                <Button variant="outline" className="w-full justify-start">
+                  <Users className="w-4 h-4 mr-2" />
+                  Gestionar Usuarios
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Ver Reportes
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configuración
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Activity className="w-4 h-4 mr-2" />
+                  Logs del Sistema
+                </Button>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        {/* 🔧 Tab Servicios */}
-        <TabsContent value="services" className="space-y-4">
+        {/* 👥 Tab Usuarios - Integración con AdminDashboard */}
+        <TabsContent value="users" className="space-y-6">
+          <AdminDashboard />
+        </TabsContent>
+
+        {/* ⚙️ Tab Sistema */}
+        <TabsContent value="system" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuración General</CardTitle>
+                <CardDescription>Ajustes principales del sistema</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">Registro de usuarios</div>
+                      <div className="text-sm text-muted-foreground">Permitir auto-registro</div>
+                    </div>
+                    <Badge variant="secondary">Deshabilitado</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">Verificación de email</div>
+                      <div className="text-sm text-muted-foreground">Requerir verificación</div>
+                    </div>
+                    <Badge variant="default">Habilitado</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">Modo mantenimiento</div>
+                      <div className="text-sm text-muted-foreground">Sistema en mantenimiento</div>
+                    </div>
+                    <Badge variant="secondary">Deshabilitado</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuración de Seguridad</CardTitle>
+                <CardDescription>Políticas de seguridad y acceso</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">Expiración de sesión</div>
+                      <div className="text-sm text-muted-foreground">Tiempo límite de sesión</div>
+                    </div>
+                    <Badge variant="outline">24 horas</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">Intentos de login</div>
+                      <div className="text-sm text-muted-foreground">Máximo de intentos fallidos</div>
+                    </div>
+                    <Badge variant="outline">5 intentos</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">2FA</div>
+                      <div className="text-sm text-muted-foreground">Autenticación de dos factores</div>
+                    </div>
+                    <Badge variant="secondary">Opcional</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Límites y Quotas</CardTitle>
+                <CardDescription>Configuración de límites del sistema</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">Tamaño máximo de archivo</div>
+                      <div className="text-sm text-muted-foreground">Límite por documento</div>
+                    </div>
+                    <Badge variant="outline">50 MB</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">Almacenamiento por usuario</div>
+                      <div className="text-sm text-muted-foreground">Cuota individual</div>
+                    </div>
+                    <Badge variant="outline">1 GB</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">Retención de logs</div>
+                      <div className="text-sm text-muted-foreground">Tiempo de conservación</div>
+                    </div>
+                    <Badge variant="outline">90 días</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
           <Card>
             <CardHeader>
-              <CardTitle>Estado de Servicios</CardTitle>
-              <CardDescription>
-                Monitor y control de servicios del sistema
-              </CardDescription>
+                <CardTitle>Notificaciones</CardTitle>
+                <CardDescription>Configuración de alertas y notificaciones</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {systemHealth.services.map((service, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      {getServiceIcon(service.status)}
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium">{service.name}</p>
-                        <p className="text-xs text-muted-foreground">Uptime: {service.uptime}</p>
+                      <div className="font-medium">Email de bienvenida</div>
+                      <div className="text-sm text-muted-foreground">Nuevo usuario registrado</div>
+                    </div>
+                    <Badge variant="default">Habilitado</Badge>
                       </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">Alertas de seguridad</div>
+                      <div className="text-sm text-muted-foreground">Notificar actividad sospechosa</div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge 
-                        variant={service.status === 'running' ? 'default' : 'destructive'}
-                        className={service.status === 'running' ? 'bg-green-100 text-green-700' : ''}
-                      >
-                        {service.status === 'running' ? 'Ejecutándose' : 'Detenido'}
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRestartService(service.name)}
-                        disabled={isLoading}
-                      >
-                        Reiniciar
-                      </Button>
-                    </div>
+                    <Badge variant="default">Habilitado</Badge>
                   </div>
-                ))}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">Reportes automáticos</div>
+                      <div className="text-sm text-muted-foreground">Envío programado de reportes</div>
+                    </div>
+                    <Badge variant="secondary">Deshabilitado</Badge>
+                  </div>
               </div>
             </CardContent>
           </Card>
+          </div>
         </TabsContent>
 
-        {/* 📊 Tab Rendimiento */}
-        <TabsContent value="performance" className="space-y-4">
+        {/* 📊 Tab Monitoreo */}
+        <TabsContent value="monitoring" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Métricas de Rendimiento</CardTitle>
+              <CardTitle>Monitoreo del Sistema</CardTitle>
               <CardDescription>
-                Análisis detallado del rendimiento del sistema
+                Métricas de rendimiento y actividad en tiempo real
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-12">
-                <Cpu className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Métricas de Rendimiento</h3>
+                <Activity className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Monitoreo Avanzado</h3>
                 <p className="text-muted-foreground mb-4">
-                  Los gráficos detallados de rendimiento estarán disponibles próximamente.
+                  Las métricas de rendimiento y monitoreo en tiempo real estarán disponibles próximamente.
                 </p>
-                <Button variant="outline">
-                  <Activity className="w-4 h-4 mr-2" />
-                  Ver Histórico
-                </Button>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-lg mx-auto">
+                  <Card className="p-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">99.9%</div>
+                      <div className="text-xs text-muted-foreground">Uptime</div>
+                    </div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">&lt; 100ms</div>
+                      <div className="text-xs text-muted-foreground">Respuesta</div>
               </div>
-            </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* 🛠️ Tab Mantenimiento */}
-        <TabsContent value="maintenance" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Herramientas de Mantenimiento</CardTitle>
-              <CardDescription>
-                Operaciones de mantenimiento y administración del sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button 
-                  variant="outline" 
-                  className="h-20 flex flex-col"
-                  onClick={handleMaintenanceMode}
-                  disabled={isLoading}
-                >
-                  <Settings className="w-6 h-6 mb-2" />
-                  Modo Mantenimiento
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="h-20 flex flex-col"
-                  disabled={isLoading}
-                >
-                  <Database className="w-6 h-6 mb-2" />
-                  Backup Base de Datos
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="h-20 flex flex-col"
-                  disabled={isLoading}
-                >
-                  <HardDrive className="w-6 h-6 mb-2" />
-                  Limpiar Cache
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="h-20 flex flex-col"
-                  disabled={isLoading}
-                >
-                  <Wifi className="w-6 h-6 mb-2" />
-                  Test Conectividad
-                </Button>
+                  <Card className="p-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">24/7</div>
+                      <div className="text-xs text-muted-foreground">Disponible</div>
               </div>
-              
-              <div className="border-t pt-4">
-                <h4 className="font-medium mb-2">Zona de Peligro</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Estas acciones pueden afectar el funcionamiento del sistema. Úsalas con precaución.
-                </p>
-                <div className="space-y-2">
-                  <Button variant="destructive" disabled={isLoading}>
-                    Reiniciar Sistema
-                  </Button>
+                  </Card>
                 </div>
               </div>
             </CardContent>

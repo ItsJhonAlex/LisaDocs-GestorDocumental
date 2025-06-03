@@ -1,62 +1,67 @@
-import { Shield, UserPlus } from 'lucide-react';
+import { Shield, Users as UsersIcon } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { AdminContent } from '@/components/admin/AdminDashboard';
-import { useAuth } from '@/hooks/useAuth';
 
-export function UsersPage() {
-  const { hasAnyRole } = useAuth();
+/**
+ * 👥 Página de Gestión de Usuarios
+ * 
+ * Panel dedicado para la gestión completa de usuarios:
+ * - Disponible para administradores y presidentes
+ * - Integración con el sistema de permisos
+ * - Dashboard completo de usuarios
+ */
+export default function UsersPage() {
+  const { user } = useAuth();
   
-  // 🛡️ Verificar permisos de acceso
-  const canAccess = hasAnyRole(['administrador', 'presidente']);
-
-  // 🚫 Si no tiene permisos, mostrar mensaje de acceso restringido
+  // 🛡️ Verificación de permisos
+  const canAccess = user?.role === 'administrador' || user?.role === 'presidente';
+  
   if (!canAccess) {
     return (
-      <div className="flex items-center justify-center min-h-[600px]">
+      <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
-              <Shield className="w-8 h-8 text-destructive" />
-            </div>
-            <CardTitle className="text-destructive">Acceso Restringido</CardTitle>
+            <Shield className="w-12 h-12 text-destructive mx-auto mb-4" />
+            <CardTitle className="text-xl">Acceso Restringido</CardTitle>
             <CardDescription>
-              Solo administradores y presidentes pueden acceder a la gestión de usuarios.
+              Esta página está disponible solo para administradores y presidentes.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <p className="text-sm text-muted-foreground mb-4">
-              Si necesitas acceso a esta funcionalidad, contacta con el administrador del sistema.
+            <Badge variant="outline" className="mb-4">
+              Rol actual: {user?.role || 'Sin rol'}
+            </Badge>
+            <p className="text-sm text-muted-foreground">
+              Necesitas permisos de administrador o presidente para gestionar usuarios.
             </p>
-            <div className="space-y-2 text-xs text-muted-foreground">
-              <p><strong>Roles con acceso:</strong></p>
-              <p>• Administrador</p>
-              <p>• Presidente</p>
-            </div>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // ✅ Si tiene permisos, mostrar el dashboard de administración completo
   return (
-    <div className="space-y-6">
-      {/* 🎯 Header de la página */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="container mx-auto py-6 space-y-6">
+      {/* 📊 Header de la página */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestión de Usuarios</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <UsersIcon className="h-8 w-8 text-primary" />
+            Gestión de Usuarios
+          </h1>
+          <p className="text-muted-foreground mt-2">
             Administra usuarios, roles y permisos del sistema LisaDocs
           </p>
         </div>
-        <Button>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Crear Usuario
-        </Button>
+        <Badge variant="default" className="px-3 py-1">
+          <Shield className="w-4 h-4 mr-2" />
+          {user.role === 'administrador' ? 'Administrador' : 'Presidente'}
+        </Badge>
       </div>
 
-      {/* 🎯 Contenido del dashboard de administración */}
+      {/* 📋 Contenido principal */}
       <AdminContent />
     </div>
   );
