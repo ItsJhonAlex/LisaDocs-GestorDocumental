@@ -14,9 +14,7 @@ const uploadSchema = z.object({
 
 // 📤 Ruta para upload de documentos
 export async function uploadRoute(fastify: FastifyInstance): Promise<void> {
-  fastify.route({
-    method: 'POST',
-    url: '/documents',
+  fastify.post('/', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Upload a new document',

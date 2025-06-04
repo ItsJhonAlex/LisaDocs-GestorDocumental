@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import fp from 'fastify-plugin'
 import { userService } from '../../services/userService'
 import { z } from 'zod'
 
@@ -11,12 +12,10 @@ const updateProfileSchema = z.object({
 type UpdateProfileBody = z.infer<typeof updateProfileSchema>
 
 // 👤 Rutas de perfil de usuario
-export async function profileRoute(fastify: FastifyInstance): Promise<void> {
+async function profileRoutePlugin(fastify: FastifyInstance): Promise<void> {
   
-  // 📄 GET /users/profile - Obtener perfil del usuario autenticado
-  fastify.route({
-    method: 'GET',
-    url: '/users/profile',
+  // 📄 GET /profile - Obtener perfil del usuario autenticado
+  fastify.get('/profile', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get current user profile',
@@ -60,72 +59,68 @@ export async function profileRoute(fastify: FastifyInstance): Promise<void> {
           }
         }
       }
-    },
-
-    handler: async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        // 🔐 Obtener usuario autenticado
-        const authenticatedUser = (request as any).user
-        if (!authenticatedUser?.id) {
-          return reply.status(401).send({
-            success: false,
-            error: 'Authentication required',
-            details: 'User not authenticated'
-          })
-        }
-
-        // 📄 Obtener datos completos del usuario
-        const userWithStats = await userService.getUserById(authenticatedUser.id)
-        
-        if (!userWithStats) {
-          return reply.status(404).send({
-            success: false,
-            error: 'User not found',
-            details: 'Current user not found in database'
-          })
-        }
-
-        // 🎯 Formatear respuesta
-        const profileData = {
-          id: userWithStats.id,
-          email: userWithStats.email,
-          fullName: userWithStats.fullName,
-          role: userWithStats.role,
-          workspace: userWithStats.workspace,
-          isActive: userWithStats.isActive,
-          documentsCount: userWithStats.documentsCount,
-          lastActivity: userWithStats.lastActivity?.toISOString() || null,
-          preferences: userWithStats.preferences || {},
-          createdAt: userWithStats.createdAt.toISOString(),
-          updatedAt: userWithStats.updatedAt.toISOString(),
-          lastLoginAt: userWithStats.lastLoginAt?.toISOString() || null
-        }
-
-        // ✅ Respuesta exitosa
-        return reply.status(200).send({
-          success: true,
-          message: 'Profile retrieved successfully',
-          data: {
-            user: profileData
-          }
-        })
-
-      } catch (error: any) {
-        console.error('❌ Get profile error:', error)
-
-        return reply.status(500).send({
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      // 🔐 Obtener usuario autenticado
+      const authenticatedUser = (request as any).user
+      if (!authenticatedUser?.id) {
+        return reply.status(401).send({
           success: false,
-          error: 'Internal server error',
-          details: 'Failed to retrieve user profile'
+          error: 'Authentication required',
+          details: 'User not authenticated'
         })
       }
+
+      // 📄 Obtener datos completos del usuario
+      const userWithStats = await userService.getUserById(authenticatedUser.id)
+      
+      if (!userWithStats) {
+        return reply.status(404).send({
+          success: false,
+          error: 'User not found',
+          details: 'Current user not found in database'
+        })
+      }
+
+      // 🎯 Formatear respuesta
+      const profileData = {
+        id: userWithStats.id,
+        email: userWithStats.email,
+        fullName: userWithStats.fullName,
+        role: userWithStats.role,
+        workspace: userWithStats.workspace,
+        isActive: userWithStats.isActive,
+        documentsCount: userWithStats.documentsCount,
+        lastActivity: userWithStats.lastActivity?.toISOString() || null,
+        preferences: userWithStats.preferences || {},
+        createdAt: userWithStats.createdAt.toISOString(),
+        updatedAt: userWithStats.updatedAt.toISOString(),
+        lastLoginAt: userWithStats.lastLoginAt?.toISOString() || null
+      }
+
+      // ✅ Respuesta exitosa
+      return reply.status(200).send({
+        success: true,
+        message: 'Profile retrieved successfully',
+        data: {
+          user: profileData
+        }
+      })
+
+    } catch (error: any) {
+      console.error('❌ Get profile error:', error)
+
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error',
+        details: 'Failed to retrieve user profile'
+      })
     }
   })
 
-  // ✏️ PUT /users/profile - Actualizar perfil del usuario autenticado
-  fastify.route({
-    method: 'PUT',
-    url: '/users/profile',
+  // ✏️ PUT /profile - Actualizar perfil del usuario autenticado
+  fastify.put<{ Body: UpdateProfileBody }>('/profile', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Update current user profile',
@@ -172,86 +167,88 @@ export async function profileRoute(fastify: FastifyInstance): Promise<void> {
           }
         }
       }
-    },
-
-    handler: async (request: FastifyRequest<{ Body: UpdateProfileBody }>, reply: FastifyReply) => {
-      try {
-        // 🔐 Obtener usuario autenticado
-        const authenticatedUser = (request as any).user
-        if (!authenticatedUser?.id) {
-          return reply.status(401).send({
-            success: false,
-            error: 'Authentication required',
-            details: 'User not authenticated'
-          })
-        }
-
-        // 📋 Validar datos de entrada
-        const validationResult = updateProfileSchema.safeParse(request.body)
-        if (!validationResult.success) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Validation error',
-            details: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
-          })
-        }
-
-        const updateData = validationResult.data
-
-        // ✏️ Actualizar perfil
-        const updatedUser = await userService.updateUser(
-          authenticatedUser.id,
-          updateData,
-          authenticatedUser.id
-        )
-
-        // 🎯 Formatear respuesta
-        const responseUser = {
-          id: updatedUser.id,
-          email: updatedUser.email,
-          fullName: updatedUser.fullName,
-          role: updatedUser.role,
-          workspace: updatedUser.workspace,
-          isActive: updatedUser.isActive,
-          preferences: updatedUser.preferences || {},
-          updatedAt: updatedUser.updatedAt.toISOString()
-        }
-
-        // ✅ Respuesta exitosa
-        return reply.status(200).send({
-          success: true,
-          message: 'Profile updated successfully',
-          data: {
-            user: responseUser
-          }
-        })
-
-      } catch (error: any) {
-        console.error('❌ Update profile error:', error)
-
-        // 🚨 Error de validación
-        if (error.message.includes('validation') || error.message.includes('Invalid')) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Validation error',
-            details: error.message
-          })
-        }
-
-        // 🚨 Error general
-        return reply.status(500).send({
+    }
+  }, async (request: FastifyRequest<{ Body: UpdateProfileBody }>, reply: FastifyReply) => {
+    try {
+      // 🔐 Obtener usuario autenticado
+      const authenticatedUser = (request as any).user
+      if (!authenticatedUser?.id) {
+        return reply.status(401).send({
           success: false,
-          error: 'Internal server error',
-          details: 'Failed to update profile'
+          error: 'Authentication required',
+          details: 'User not authenticated'
         })
       }
+
+      // 📋 Validar datos de entrada
+      const validationResult = updateProfileSchema.safeParse(request.body)
+      if (!validationResult.success) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Validation error',
+          details: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+        })
+      }
+
+      const updateData = validationResult.data
+
+      // ✏️ Actualizar perfil
+      const updatedUser = await userService.updateUser(
+        authenticatedUser.id,
+        updateData,
+        authenticatedUser.id
+      )
+
+      // 🎯 Formatear respuesta
+      const responseUser = {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        fullName: updatedUser.fullName,
+        role: updatedUser.role,
+        workspace: updatedUser.workspace,
+        isActive: updatedUser.isActive,
+        preferences: updatedUser.preferences || {},
+        updatedAt: updatedUser.updatedAt.toISOString()
+      }
+
+      // ✅ Respuesta exitosa
+      return reply.status(200).send({
+        success: true,
+        message: 'Profile updated successfully',
+        data: {
+          user: responseUser
+        }
+      })
+
+    } catch (error: any) {
+      console.error('❌ Update profile error:', error)
+
+      // 🚨 Error de validación
+      if (error.message.includes('validation') || error.message.includes('Invalid')) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Validation error',
+          details: error.message
+        })
+      }
+
+      // 🚨 Error general
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error',
+        details: 'Failed to update profile'
+      })
     }
   })
 
-  // 🔐 PUT /users/profile/password - Cambiar contraseña del usuario autenticado
-  fastify.route({
-    method: 'PUT',
-    url: '/users/profile/password',
+  // 🔐 PUT /profile/password - Cambiar contraseña del usuario autenticado
+  fastify.put<{
+    Body: { 
+      currentPassword: string
+      newPassword: string
+      confirmPassword: string 
+    }
+  }>('/profile/password', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Change current user password',
@@ -287,63 +284,61 @@ export async function profileRoute(fastify: FastifyInstance): Promise<void> {
           }
         }
       }
-    },
+    }
+  }, async (request: FastifyRequest<{
+    Body: { 
+      currentPassword: string
+      newPassword: string
+      confirmPassword: string 
+    }
+  }>, reply: FastifyReply) => {
+    try {
+      const authenticatedUser = (request as any).user
+      const { currentPassword, newPassword, confirmPassword } = request.body
 
-    handler: async (request: FastifyRequest<{
-      Body: { 
-        currentPassword: string
-        newPassword: string
-        confirmPassword: string 
-      }
-    }>, reply: FastifyReply) => {
-      try {
-        const authenticatedUser = (request as any).user
-        const { currentPassword, newPassword, confirmPassword } = request.body
-
-        // ✅ Verificar que las contraseñas coinciden
-        if (newPassword !== confirmPassword) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Password confirmation mismatch',
-            details: 'New password and confirmation password do not match'
-          })
-        }
-
-        // 🔐 Cambiar contraseña
-        await userService.changePassword(authenticatedUser.id, {
-          currentPassword,
-          newPassword
-        })
-
-        return reply.status(200).send({
-          success: true,
-          message: 'Password changed successfully'
-        })
-
-      } catch (error: any) {
-        console.error('❌ Change profile password error:', error)
-
-        if (error.message.includes('incorrect')) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Invalid current password',
-            details: 'The current password provided is incorrect'
-          })
-        }
-
-        return reply.status(500).send({
+      // ✅ Verificar que las contraseñas coinciden
+      if (newPassword !== confirmPassword) {
+        return reply.status(400).send({
           success: false,
-          error: 'Internal server error',
-          details: 'Failed to change password'
+          error: 'Password confirmation mismatch',
+          details: 'New password and confirmation password do not match'
         })
       }
+
+      // 🔐 Cambiar contraseña
+      await userService.changePassword(authenticatedUser.id, {
+        currentPassword,
+        newPassword
+      })
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Password changed successfully'
+      })
+
+    } catch (error: any) {
+      console.error('❌ Change profile password error:', error)
+
+      if (error.message.includes('incorrect')) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Invalid current password',
+          details: 'The current password provided is incorrect'
+        })
+      }
+
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error',
+        details: 'Failed to change password'
+      })
     }
   })
 
-  // 📊 GET /users/profile/activity - Obtener actividad del usuario
-  fastify.route({
-    method: 'GET',
-    url: '/users/profile/activity',
+  // 📊 GET /profile/activity - Obtener actividad del usuario
+  fastify.get<{
+    Querystring: { limit?: number }
+  }>('/profile/activity', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get current user activity summary',
@@ -387,37 +382,40 @@ export async function profileRoute(fastify: FastifyInstance): Promise<void> {
           }
         }
       }
-    },
+    }
+  }, async (request: FastifyRequest<{
+    Querystring: { limit?: number }
+  }>, reply: FastifyReply) => {
+    try {
+      const authenticatedUser = (request as any).user
+      const limit = request.query.limit || 10
 
-    handler: async (request: FastifyRequest<{
-      Querystring: { limit?: number }
-    }>, reply: FastifyReply) => {
-      try {
-        const authenticatedUser = (request as any).user
-        const limit = request.query.limit || 10
+      // 📊 Obtener estadísticas y documentos recientes
+      // TODO: Implementar servicio para obtener actividad del usuario
+      
+      // Por ahora retornamos datos básicos
+      return reply.status(200).send({
+        success: true,
+        message: 'User activity retrieved successfully',
+        data: {
+          documentsCreated: 0,
+          recentDocuments: []
+        }
+      })
 
-        // 📊 Obtener estadísticas y documentos recientes
-        // TODO: Implementar servicio para obtener actividad del usuario
-        
-        // Por ahora retornamos datos básicos
-        return reply.status(200).send({
-          success: true,
-          message: 'User activity retrieved successfully',
-          data: {
-            documentsCreated: 0,
-            recentDocuments: []
-          }
-        })
+    } catch (error: any) {
+      console.error('❌ Get profile activity error:', error)
 
-      } catch (error: any) {
-        console.error('❌ Get profile activity error:', error)
-
-        return reply.status(500).send({
-          success: false,
-          error: 'Internal server error',
-          details: 'Failed to retrieve user activity'
-        })
-      }
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error',
+        details: 'Failed to retrieve user activity'
+      })
     }
   })
 }
+
+// 🎯 Exportar como plugin de Fastify
+export const profileRoute = fp(profileRoutePlugin, {
+  name: 'user-profile-routes'
+})

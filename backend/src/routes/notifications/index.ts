@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { createNotificationRoute } from './create'
-import { listNotificationRoute } from './list'
-import { readNotificationRoute } from './read'
+import { notificationListRoute } from './list'
+import { notificationReadRoute } from './read'
 
 // 📧 Router principal de notificaciones
 export async function notificationRoutes(fastify: FastifyInstance): Promise<void> {
@@ -10,9 +10,9 @@ export async function notificationRoutes(fastify: FastifyInstance): Promise<void
   fastify.addHook('preHandler', fastify.authenticate)
 
   // 📧 Registrar todas las rutas de notificaciones
-  await fastify.register(createNotificationRoute)  // Crear notificaciones
-  await fastify.register(listNotificationRoute)    // Listar notificaciones
-  await fastify.register(readNotificationRoute)    // Manejar lectura
+  await fastify.register(createNotificationRoute)     // Crear notificaciones
+  await fastify.register(notificationListRoute)       // Listar notificaciones
+  await fastify.register(notificationReadRoute)       // Manejar lectura
 
   // 📊 GET /notifications - Obtener notificaciones del usuario
   fastify.route({

@@ -12,8 +12,8 @@ const listQuerySchema = z.object({
   tags: z.string().optional().transform(val => val ? val.split(',').map(tag => tag.trim()) : undefined),
   dateFrom: z.string().optional().transform(val => val ? new Date(val) : undefined),
   dateTo: z.string().optional().transform(val => val ? new Date(val) : undefined),
-  limit: z.string().optional().transform(val => val ? parseInt(val) : 20),
-  offset: z.string().optional().transform(val => val ? parseInt(val) : 0),
+  limit: z.union([z.string(), z.number()]).optional().transform(val => val ? parseInt(val.toString()) : 20),
+  offset: z.union([z.string(), z.number()]).optional().transform(val => val ? parseInt(val.toString()) : 0),
   orderBy: z.enum(['createdAt', 'updatedAt', 'title', 'fileSize']).optional().default('createdAt'),
   orderDirection: z.enum(['asc', 'desc']).optional().default('desc')
 })
@@ -22,9 +22,7 @@ type ListQuery = z.infer<typeof listQuerySchema>
 
 // 📋 Ruta para listar documentos
 export async function listRoute(fastify: FastifyInstance): Promise<void> {
-  fastify.route({
-    method: 'GET',
-    url: '/documents',
+  fastify.get('/', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get a list of documents with filters',
@@ -66,14 +64,14 @@ export async function listRoute(fastify: FastifyInstance): Promise<void> {
             description: 'Filter documents created until this date' 
           },
           limit: { 
-            type: 'integer', 
+            type: ['integer', 'string'], 
             minimum: 1, 
             maximum: 100, 
             default: 20,
             description: 'Number of documents to return' 
           },
           offset: { 
-            type: 'integer', 
+            type: ['integer', 'string'], 
             minimum: 0, 
             default: 0,
             description: 'Number of documents to skip' 
@@ -245,9 +243,7 @@ export async function listRoute(fastify: FastifyInstance): Promise<void> {
   })
 
   // 📊 Ruta adicional para estadísticas de documentos
-  fastify.route({
-    method: 'GET',
-    url: '/documents/stats',
+  fastify.get('/stats', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get document statistics',

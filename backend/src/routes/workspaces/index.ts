@@ -26,9 +26,7 @@ export async function workspaceRoutes(
 
   // 🏢 GET /workspaces - Listar todos los workspaces disponibles
   // Obtiene información básica de todos los workspaces con contadores y acceso del usuario
-  fastify.route({
-    method: 'GET',
-    url: '/workspaces',
+  fastify.get('/workspaces', {
     preHandler: fastify.authenticate,
     schema: {
       response: {
@@ -92,9 +90,7 @@ export async function workspaceRoutes(
 
   // 🏢 GET /workspaces/:workspace - Información específica de un workspace
   // Obtiene información detallada de un workspace específico incluyendo estadísticas y documentos recientes
-  fastify.route({
-    method: 'GET',
-    url: '/workspaces/:workspace',
+  fastify.get('/workspaces/:workspace', {
     preHandler: fastify.authenticate,
     schema: {
       params: {
@@ -176,9 +172,7 @@ export async function workspaceRoutes(
 
   // 📊 GET /workspaces/:workspace/stats - Estadísticas del workspace
   // Obtiene estadísticas completas del workspace: documentos, usuarios, almacenamiento y actividad
-  fastify.route({
-    method: 'GET',
-    url: '/workspaces/:workspace/stats',
+  fastify.get('/workspaces/:workspace/stats', {
     preHandler: fastify.authenticate,
     schema: {
       params: {
@@ -258,9 +252,7 @@ export async function workspaceRoutes(
 
   // 👥 GET /workspaces/:workspace/users - Usuarios del workspace
   // Obtiene la lista de usuarios activos en un workspace específico
-  fastify.route({
-    method: 'GET',
-    url: '/workspaces/:workspace/users',
+  fastify.get('/workspaces/:workspace/users', {
     preHandler: fastify.authenticate,
     schema: {
       params: {

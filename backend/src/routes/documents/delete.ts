@@ -11,9 +11,7 @@ type DeleteParams = z.infer<typeof paramsSchema>
 
 // 🗑️ Ruta para eliminar documentos
 export async function deleteRoute(fastify: FastifyInstance): Promise<void> {
-  fastify.route({
-    method: 'DELETE',
-    url: '/documents/:id',
+  fastify.delete('/:id', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Delete a document permanently (removes both file and database record)',
@@ -228,9 +226,7 @@ export async function deleteRoute(fastify: FastifyInstance): Promise<void> {
   })
 
   // 📊 Ruta adicional para eliminación masiva (solo administradores)
-  fastify.route({
-    method: 'DELETE',
-    url: '/documents/bulk',
+  fastify.delete('/bulk', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Delete multiple documents at once (admin only)',

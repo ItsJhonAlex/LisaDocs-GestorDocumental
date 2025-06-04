@@ -25,9 +25,7 @@ type PresidenciaFilters = z.infer<typeof presidenciaFiltersSchema>
 export async function presidenciaRoutes(fastify: FastifyInstance): Promise<void> {
 
   // 📋 GET /workspaces/presidencia/documents - Documentos ejecutivos
-  fastify.route({
-    method: 'GET',
-    url: '/documents',
+  fastify.get('/documents', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get Presidencia workspace documents with executive filters',
@@ -188,9 +186,7 @@ export async function presidenciaRoutes(fastify: FastifyInstance): Promise<void>
   })
 
   // 📊 GET /workspaces/presidencia/dashboard - Dashboard ejecutivo
-  fastify.route({
-    method: 'GET',
-    url: '/dashboard',
+  fastify.get('/dashboard', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get Presidencia workspace executive dashboard',
@@ -281,9 +277,7 @@ export async function presidenciaRoutes(fastify: FastifyInstance): Promise<void>
   })
 
   // 🔍 GET /workspaces/presidencia/audit - Auditoría y supervisión
-  fastify.route({
-    method: 'GET',
-    url: '/audit',
+  fastify.get('/audit', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get audit logs and system oversight (executive access)',
@@ -379,9 +373,7 @@ export async function presidenciaRoutes(fastify: FastifyInstance): Promise<void>
   })
 
   // 📈 GET /workspaces/presidencia/reports - Reportes ejecutivos
-  fastify.route({
-    method: 'GET',
-    url: '/reports',
+  fastify.get('/reports', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get executive reports and system analytics',

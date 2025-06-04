@@ -23,9 +23,7 @@ type IntendenciaFilters = z.infer<typeof intendenciaFiltersSchema>
 export async function intendenciaRoutes(fastify: FastifyInstance): Promise<void> {
 
   // 📋 GET /workspaces/intendencia/documents - Documentos territoriales
-  fastify.route({
-    method: 'GET',
-    url: '/documents',
+  fastify.get('/documents', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get Intendencia workspace documents with territorial filters',
@@ -177,9 +175,7 @@ export async function intendenciaRoutes(fastify: FastifyInstance): Promise<void>
   })
 
   // 🗺️ GET /workspaces/intendencia/territories - Gestión territorial
-  fastify.route({
-    method: 'GET',
-    url: '/territories',
+  fastify.get('/territories', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get territorial management information',
@@ -258,9 +254,7 @@ export async function intendenciaRoutes(fastify: FastifyInstance): Promise<void>
   })
 
   // 📊 GET /workspaces/intendencia/dashboard - Dashboard territorial
-  fastify.route({
-    method: 'GET',
-    url: '/dashboard',
+  fastify.get('/dashboard', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get Intendencia workspace territorial dashboard',

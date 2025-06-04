@@ -11,9 +11,7 @@ type GetParams = z.infer<typeof paramsSchema>
 
 // 📄 Ruta para obtener documento específico
 export async function getRoute(fastify: FastifyInstance): Promise<void> {
-  fastify.route({
-    method: 'GET',
-    url: '/documents/:id',
+  fastify.get('/:id', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get a specific document by ID',

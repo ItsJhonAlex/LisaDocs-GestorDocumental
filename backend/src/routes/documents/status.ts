@@ -18,9 +18,7 @@ type StatusBody = z.infer<typeof statusUpdateSchema>
 
 // 🔄 Ruta para cambiar estado del documento
 export async function statusRoute(fastify: FastifyInstance): Promise<void> {
-  fastify.route({
-    method: 'PUT',
-    url: '/documents/:id/status',
+  fastify.put('/:id/status', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Change document status (draft → stored → archived)',

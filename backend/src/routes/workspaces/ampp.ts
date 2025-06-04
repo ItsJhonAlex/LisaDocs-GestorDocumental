@@ -22,9 +22,7 @@ type AmppFilters = z.infer<typeof amppFiltersSchema>
 export async function amppRoutes(fastify: FastifyInstance): Promise<void> {
 
   // 📋 GET /workspaces/ampp/documents - Documentos municipales
-  fastify.route({
-    method: 'GET',
-    url: '/documents',
+  fastify.get('/documents', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get AMPP workspace documents with municipal filters',
@@ -176,9 +174,7 @@ export async function amppRoutes(fastify: FastifyInstance): Promise<void> {
   })
 
   // 🏛️ GET /workspaces/ampp/municipalities - Gestión de municipios
-  fastify.route({
-    method: 'GET',
-    url: '/municipalities',
+  fastify.get('/municipalities', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get municipalities information and statistics',
@@ -254,9 +250,7 @@ export async function amppRoutes(fastify: FastifyInstance): Promise<void> {
   })
 
   // 📊 GET /workspaces/ampp/dashboard - Dashboard municipal
-  fastify.route({
-    method: 'GET',
-    url: '/dashboard',
+  fastify.get('/dashboard', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get AMPP workspace dashboard with municipal metrics',
@@ -341,9 +335,7 @@ export async function amppRoutes(fastify: FastifyInstance): Promise<void> {
   })
 
   // 📈 GET /workspaces/ampp/reports - Reportes municipales
-  fastify.route({
-    method: 'GET',
-    url: '/reports',
+  fastify.get('/reports', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get AMPP workspace reports and municipal analytics',

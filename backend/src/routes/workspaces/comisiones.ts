@@ -23,9 +23,7 @@ type ComisionesFilters = z.infer<typeof comisionesFiltersSchema>
 export async function comisionesRoutes(fastify: FastifyInstance): Promise<void> {
 
   // 📋 GET /workspaces/comisiones-cf/documents - Documentos de fiscalización
-  fastify.route({
-    method: 'GET',
-    url: '/documents',
+  fastify.get('/documents', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get Comisiones CF workspace documents with oversight filters',
@@ -178,9 +176,7 @@ export async function comisionesRoutes(fastify: FastifyInstance): Promise<void> 
   })
 
   // 🔍 GET /workspaces/comisiones-cf/investigations - Investigaciones activas
-  fastify.route({
-    method: 'GET',
-    url: '/investigations',
+  fastify.get('/investigations', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get active investigations and oversight activities',
@@ -276,9 +272,7 @@ export async function comisionesRoutes(fastify: FastifyInstance): Promise<void> 
   })
 
   // 📊 GET /workspaces/comisiones-cf/dashboard - Dashboard de control
-  fastify.route({
-    method: 'GET',
-    url: '/dashboard',
+  fastify.get('/dashboard', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get Comisiones CF oversight dashboard',
@@ -364,9 +358,7 @@ export async function comisionesRoutes(fastify: FastifyInstance): Promise<void> 
   })
 
   // 📈 GET /workspaces/comisiones-cf/reports - Reportes de fiscalización
-  fastify.route({
-    method: 'GET',
-    url: '/reports',
+  fastify.get('/reports', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get oversight and compliance reports',

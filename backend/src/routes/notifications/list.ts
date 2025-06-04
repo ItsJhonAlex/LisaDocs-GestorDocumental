@@ -1,53 +1,74 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import { notificationService } from '../../services/notificationService'
 import { z } from 'zod'
 
 // 📋 Schema de validación para query parameters
-const listNotificationsSchema = z.object({
-  isRead: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
-  isArchived: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
-  type: z.enum(['info', 'success', 'warning', 'error', 'announcement', 'reminder', 'task', 'alert']).optional(),
-  priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
-  category: z.string().max(50).optional(),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
-  search: z.string().min(2).max(100).optional(),
-  limit: z.string().transform(val => parseInt(val)).refine(val => val > 0 && val <= 100).default('20'),
-  offset: z.string().transform(val => parseInt(val)).refine(val => val >= 0).default('0'),
-  sortBy: z.enum(['createdAt', 'updatedAt', 'priority']).default('createdAt'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc')
+const notificationListSchema = z.object({
+  status: z.enum(['read', 'unread', 'all']).optional().default('all'),
+  type: z.enum(['document_uploaded', 'document_archived', 'system_message', 'warning']).optional(),
+  category: z.string().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  limit: z.union([z.string(), z.number()]).optional().transform(val => {
+    if (typeof val === 'string') return parseInt(val) || 20
+    return val || 20
+  }),
+  offset: z.union([z.string(), z.number()]).optional().transform(val => {
+    if (typeof val === 'string') return parseInt(val) || 0
+    return val || 0
+  })
 })
 
-type ListNotificationsQuery = z.infer<typeof listNotificationsSchema>
+type NotificationQuery = z.infer<typeof notificationListSchema>
 
-// 📋 Rutas para listar notificaciones
-export async function listNotificationRoute(fastify: FastifyInstance): Promise<void> {
-  
-  // 📋 GET /notifications/list - Obtener lista de notificaciones con filtros avanzados
-  fastify.route({
-    method: 'GET',
-    url: '/notifications/list',
+// 📧 Ruta para listar notificaciones
+export async function notificationListRoute(fastify: FastifyInstance): Promise<void> {
+  fastify.get('/', {
     preHandler: fastify.authenticate,
     schema: {
-      description: 'Get a list of notifications with advanced filters',
+      description: 'Get user notifications with filters',
       tags: ['Notifications'],
       querystring: {
         type: 'object',
         properties: {
-          isRead: { type: 'string', enum: ['true', 'false'] },
-          isArchived: { type: 'string', enum: ['true', 'false'] },
+          status: {
+            type: 'string',
+            enum: ['read', 'unread', 'all'],
+            default: 'all',
+            description: 'Filter by read status'
+          },
           type: { 
             type: 'string', 
-            enum: ['info', 'success', 'warning', 'error', 'announcement', 'reminder', 'task', 'alert'] 
+            enum: ['document_uploaded', 'document_archived', 'system_message', 'warning'],
+            description: 'Filter by notification type'
           },
-          priority: { type: 'string', enum: ['low', 'normal', 'high', 'urgent'] },
-          category: { type: 'string', maxLength: 50 },
-          startDate: { type: 'string', format: 'date-time' },
-          endDate: { type: 'string', format: 'date-time' },
-          search: { type: 'string', minLength: 2, maxLength: 100 },
-          limit: { type: 'string', default: '20' },
-          offset: { type: 'string', default: '0' },
-          sortBy: { type: 'string', enum: ['createdAt', 'updatedAt', 'priority'], default: 'createdAt' },
-          sortOrder: { type: 'string', enum: ['asc', 'desc'], default: 'desc' }
+          category: {
+            type: 'string',
+            description: 'Filter by category'
+          },
+          dateFrom: {
+            type: 'string',
+            format: 'date',
+            description: 'Filter from date'
+          },
+          dateTo: {
+            type: 'string',
+            format: 'date',
+            description: 'Filter to date'
+          },
+          limit: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
+            default: 20,
+            description: 'Number of notifications per page'
+          },
+          offset: {
+            type: 'integer',
+            minimum: 0,
+            default: 0,
+            description: 'Number of notifications to skip'
+          }
         }
       },
       response: {
@@ -65,18 +86,21 @@ export async function listNotificationRoute(fastify: FastifyInstance): Promise<v
                     type: 'object',
                     properties: {
                       id: { type: 'string' },
-                      title: { type: 'string' },
-                      content: { type: 'string' },
-                      type: { type: 'string' },
-                      priority: { type: 'string' },
+                      notificationId: { type: 'string' },
                       isRead: { type: 'boolean' },
-                      isArchived: { type: 'boolean' },
-                      createdAt: { type: 'string' },
                       readAt: { type: 'string' },
-                      category: { type: 'string' },
-                      actionRequired: { type: 'boolean' },
-                      actionUrl: { type: 'string' },
-                      actionText: { type: 'string' }
+                      notification: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          title: { type: 'string' },
+                          message: { type: 'string' },
+                          type: { type: 'string' },
+                          createdAt: { type: 'string' },
+                          expiresAt: { type: 'string' },
+                          relatedDocumentId: { type: 'string' }
+                        }
+                      }
                     }
                   }
                 },
@@ -89,25 +113,28 @@ export async function listNotificationRoute(fastify: FastifyInstance): Promise<v
                     hasMore: { type: 'boolean' }
                   }
                 },
-                filters: { type: 'object' },
                 summary: {
                   type: 'object',
                   properties: {
-                    unreadCount: { type: 'number' },
-                    byType: { type: 'object' },
-                    byPriority: { type: 'object' }
+                    unreadCount: { type: 'number' }
                   }
                 }
               }
             }
           }
+        },
+        400: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' },
+            details: { type: 'string' }
+          }
         }
       }
     },
 
-    handler: async (request: FastifyRequest<{
-      Querystring: ListNotificationsQuery
-    }>, reply: FastifyReply) => {
+    handler: async (request: FastifyRequest<{ Querystring: NotificationQuery }>, reply: FastifyReply) => {
       try {
         // 🔐 Obtener usuario autenticado
         const user = (request as any).user
@@ -119,260 +146,81 @@ export async function listNotificationRoute(fastify: FastifyInstance): Promise<v
           })
         }
 
-        // 📋 Validar parámetros de consulta
-        const validationResult = listNotificationsSchema.safeParse(request.query)
+        // 📋 Validar y procesar query parameters
+        const validationResult = notificationListSchema.safeParse(request.query)
         if (!validationResult.success) {
           return reply.status(400).send({
             success: false,
-            error: 'Validation error',
+            error: 'Invalid query parameters',
             details: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
           })
         }
 
         const filters = validationResult.data
 
-        // 🔍 Validar fechas
-        if (filters.startDate && filters.endDate && new Date(filters.startDate) > new Date(filters.endDate)) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Invalid date range',
-            details: 'startDate must be before endDate'
-          })
+        // 📊 Construir filtros para el servicio
+        const serviceFilters = {
+          isRead: filters.status === 'all' ? undefined : filters.status === 'read',
+          type: filters.type,
+          category: filters.category,
+          startDate: filters.dateFrom,
+          endDate: filters.dateTo,
+          limit: filters.limit,
+          offset: filters.offset
         }
 
-        // 📧 Obtener notificaciones del usuario
-        const { notificationService } = require('../../services/notificationService')
-        const result = await notificationService.getUserNotifications(user.id, filters)
-
-        // 📊 Calcular resumen de notificaciones
-        const summary = {
-          unreadCount: result.unreadCount || 0,
-          byType: result.notifications.reduce((acc: any, notif: any) => {
-            acc[notif.type] = (acc[notif.type] || 0) + 1
-            return acc
-          }, {}),
-          byPriority: result.notifications.reduce((acc: any, notif: any) => {
-            acc[notif.priority] = (acc[notif.priority] || 0) + 1
-            return acc
-          }, {})
-        }
+        // 🔍 Obtener notificaciones
+        const result = await notificationService.getUserNotifications(user.id, serviceFilters)
 
         return reply.status(200).send({
           success: true,
           message: `Found ${result.total} notifications`,
           data: {
-            notifications: result.notifications,
+            notifications: result.notifications.map(notification => ({
+              id: notification.id,
+              notificationId: notification.notificationId,
+              isRead: notification.isRead,
+              readAt: notification.readAt?.toISOString() || null,
+              isArchived: notification.isArchived,
+              archivedAt: notification.archivedAt?.toISOString() || null,
+              actionTaken: notification.actionTaken,
+              actionTakenAt: notification.actionTakenAt?.toISOString() || null,
+              notification: {
+                id: notification.notification.id,
+                title: notification.notification.title,
+                message: notification.notification.message,
+                type: notification.notification.type,
+                userId: notification.notification.userId,
+                relatedDocumentId: notification.notification.relatedDocumentId || null,
+                isRead: notification.notification.isRead,
+                readAt: notification.notification.readAt?.toISOString() || null,
+                expiresAt: notification.notification.expiresAt?.toISOString() || null,
+                createdAt: notification.notification.createdAt.toISOString()
+              }
+            })),
             pagination: {
               total: result.total,
-              limit: filters.limit,
-              offset: filters.offset,
+              limit: filters.limit || 20,
+              offset: filters.offset || 0,
               hasMore: result.hasMore
             },
-            filters: {
-              isRead: filters.isRead,
-              isArchived: filters.isArchived,
-              type: filters.type,
-              priority: filters.priority,
-              category: filters.category,
-              search: filters.search
-            },
-            summary
-          }
-        })
-
-      } catch (error: any) {
-        console.error('❌ List notifications error:', error)
-
-        // 🚨 Error de base de datos
-        if (error.message.includes('Database') || error.message.includes('Prisma')) {
-          return reply.status(500).send({
-            success: false,
-            error: 'Database error',
-            details: 'Failed to retrieve notifications from database'
-          })
-        }
-
-        // 🚨 Error general
-        return reply.status(500).send({
-          success: false,
-          error: 'Internal server error',
-          details: 'An unexpected error occurred while retrieving notifications'
-        })
-      }
-    }
-  })
-
-  // 📋 GET /notifications/archived - Obtener notificaciones archivadas
-  fastify.route({
-    method: 'GET',
-    url: '/notifications/archived',
-    preHandler: fastify.authenticate,
-    schema: {
-      description: 'Get archived notifications',
-      tags: ['Notifications'],
-      querystring: {
-        type: 'object',
-        properties: {
-          limit: { type: 'string', default: '20' },
-          offset: { type: 'string', default: '0' },
-          sortBy: { type: 'string', enum: ['archivedAt', 'createdAt'], default: 'archivedAt' },
-          sortOrder: { type: 'string', enum: ['asc', 'desc'], default: 'desc' }
-        }
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                notifications: { type: 'array' },
-                total: { type: 'number' },
-                pagination: { type: 'object' }
-              }
-            }
-          }
-        }
-      }
-    },
-
-    handler: async (request: FastifyRequest<{
-      Querystring: {
-        limit?: string
-        offset?: string
-        sortBy?: string
-        sortOrder?: string
-      }
-    }>, reply: FastifyReply) => {
-      try {
-        const user = (request as any).user
-        const { limit = '20', offset = '0', sortBy = 'archivedAt', sortOrder = 'desc' } = request.query
-
-        const filters = {
-          isArchived: true,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          sortBy,
-          sortOrder
-        }
-
-        const { notificationService } = require('../../services/notificationService')
-        const result = await notificationService.getUserNotifications(user.id, filters)
-
-        return reply.status(200).send({
-          success: true,
-          message: 'Archived notifications retrieved successfully',
-          data: {
-            notifications: result.notifications,
-            total: result.total,
-            pagination: {
-              limit: filters.limit,
-              offset: filters.offset,
-              hasMore: result.hasMore
+            summary: {
+              unreadCount: result.unreadCount
             }
           }
         })
 
       } catch (error: any) {
-        console.error('❌ Get archived notifications error:', error)
+        console.error('❌ Notification list error:', error)
         
         return reply.status(500).send({
           success: false,
           error: 'Internal server error',
-          details: 'Failed to retrieve archived notifications'
-        })
-      }
-    }
-  })
-
-  // 📋 GET /notifications/unread - Obtener solo notificaciones no leídas
-  fastify.route({
-    method: 'GET',
-    url: '/notifications/unread',
-    preHandler: fastify.authenticate,
-    schema: {
-      description: 'Get unread notifications',
-      tags: ['Notifications'],
-      querystring: {
-        type: 'object',
-        properties: {
-          priority: { type: 'string', enum: ['low', 'normal', 'high', 'urgent'] },
-          type: { 
-            type: 'string', 
-            enum: ['info', 'success', 'warning', 'error', 'announcement', 'reminder', 'task', 'alert'] 
-          },
-          limit: { type: 'string', default: '50' }
-        }
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                notifications: { type: 'array' },
-                count: { type: 'number' },
-                hasUrgent: { type: 'boolean' }
-              }
-            }
-          }
-        }
-      }
-    },
-
-    handler: async (request: FastifyRequest<{
-      Querystring: {
-        priority?: string
-        type?: string
-        limit?: string
-      }
-    }>, reply: FastifyReply) => {
-      try {
-        const user = (request as any).user
-        const { priority, type, limit = '50' } = request.query
-
-        const filters = {
-          isRead: false,
-          priority,
-          type,
-          limit: parseInt(limit),
-          offset: 0,
-          sortBy: 'createdAt',
-          sortOrder: 'desc'
-        }
-
-        const { notificationService } = require('../../services/notificationService')
-        const result = await notificationService.getUserNotifications(user.id, filters)
-
-        // 🚨 Verificar si hay notificaciones urgentes
-        const hasUrgent = result.notifications.some((notif: any) => notif.priority === 'urgent')
-
-        return reply.status(200).send({
-          success: true,
-          message: 'Unread notifications retrieved successfully',
-          data: {
-            notifications: result.notifications,
-            count: result.total,
-            hasUrgent
-          }
-        })
-
-      } catch (error: any) {
-        console.error('❌ Get unread notifications error:', error)
-        
-        return reply.status(500).send({
-          success: false,
-          error: 'Internal server error',
-          details: 'Failed to retrieve unread notifications'
+          details: 'Failed to retrieve notifications'
         })
       }
     }
   })
 }
 
-export default listNotificationRoute
+export default notificationListRoute

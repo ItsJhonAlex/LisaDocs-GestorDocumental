@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import fp from 'fastify-plugin'
 import { userService, CreateUserData } from '../../services/userService'
 import { permissionService } from '../../services/permissionService'
 import { UserRole, WorkspaceType } from '../../generated/prisma'
@@ -23,10 +24,8 @@ const createUserSchema = z.object({
 type CreateUserBody = z.infer<typeof createUserSchema>
 
 // 👤 Ruta para crear usuarios
-export async function createRoute(fastify: FastifyInstance): Promise<void> {
-  fastify.route({
-    method: 'POST',
-    url: '/users',
+async function createRoutePlugin(fastify: FastifyInstance): Promise<void> {
+  fastify.post<{ Body: CreateUserBody }>('/', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Create a new user (admin only)',
@@ -138,118 +137,121 @@ export async function createRoute(fastify: FastifyInstance): Promise<void> {
           }
         }
       }
-    },
-
-    handler: async (request: FastifyRequest<{ Body: CreateUserBody }>, reply: FastifyReply) => {
-      try {
-        // 🔐 Obtener usuario autenticado
-        const authenticatedUser = (request as any).user
-        if (!authenticatedUser?.id) {
-          return reply.status(401).send({
-            success: false,
-            error: 'Authentication required',
-            details: 'User not authenticated'
-          })
-        }
-
-        // 🔐 Verificar que es administrador
-        if (authenticatedUser.role !== 'administrador') {
-          return reply.status(403).send({
-            success: false,
-            error: 'Access denied',
-            details: 'Only administrators can create users'
-          })
-        }
-
-        // 📋 Validar datos de entrada
-        const validationResult = createUserSchema.safeParse(request.body)
-        if (!validationResult.success) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Validation error',
-            details: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
-          })
-        }
-
-        const userData = validationResult.data
-
-        // 🔍 Validaciones adicionales
-        // Verificar que el workspace es apropiado para el rol
-        const isValidRoleWorkspaceCombination = permissionService.validateRoleWorkspaceCombination(userData.role, userData.workspace)
-        if (!isValidRoleWorkspaceCombination.valid) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Invalid role-workspace combination',
-            details: isValidRoleWorkspaceCombination.reason
-          })
-        }
-
-        // 👤 Crear usuario
-        const newUser = await userService.createUser(userData, authenticatedUser.id)
-
-        // 🎯 Formatear respuesta (sin datos sensibles)
-        const responseUser = {
-          id: newUser.id,
-          email: newUser.email,
-          fullName: newUser.fullName,
-          role: newUser.role,
-          workspace: newUser.workspace,
-          isActive: newUser.isActive,
-          createdAt: newUser.createdAt.toISOString(),
-          updatedAt: newUser.updatedAt.toISOString()
-        }
-
-        // ✅ Respuesta exitosa
-        return reply.status(201).send({
-          success: true,
-          message: `User created successfully: ${newUser.email}`,
-          data: {
-            user: responseUser,
-            createdBy: {
-              id: authenticatedUser.id,
-              fullName: authenticatedUser.fullName,
-              role: authenticatedUser.role
-            }
-          }
-        })
-
-      } catch (error: any) {
-        console.error('❌ Create user error:', error)
-
-        // 🚨 Error de email duplicado
-        if (error.message.includes('Email already exists')) {
-          return reply.status(409).send({
-            success: false,
-            error: 'Email already exists',
-            details: 'A user with this email address already exists'
-          })
-        }
-
-        // 🚨 Error de validación
-        if (error.message.includes('validation') || error.message.includes('Invalid')) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Validation error',
-            details: error.message
-          })
-        }
-
-        // 🚨 Error de base de datos
-        if (error.message.includes('Database') || error.message.includes('Prisma')) {
-          return reply.status(500).send({
-            success: false,
-            error: 'Database error',
-            details: 'Failed to create user in database'
-          })
-        }
-
-        // 🚨 Error general
-        return reply.status(500).send({
+    }
+  }, async (request: FastifyRequest<{ Body: CreateUserBody }>, reply: FastifyReply) => {
+    try {
+      // 🔐 Obtener usuario autenticado
+      const authenticatedUser = (request as any).user
+      if (!authenticatedUser?.id) {
+        return reply.status(401).send({
           success: false,
-          error: 'Internal server error',
-          details: 'An unexpected error occurred while creating the user'
+          error: 'Authentication required',
+          details: 'User not authenticated'
         })
       }
+
+      // 🔐 Verificar que es administrador
+      if (authenticatedUser.role !== 'administrador') {
+        return reply.status(403).send({
+          success: false,
+          error: 'Access denied',
+          details: 'Only administrators can create users'
+        })
+      }
+
+      // 📋 Validar datos de entrada
+      const validationResult = createUserSchema.safeParse(request.body)
+      if (!validationResult.success) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Validation error',
+          details: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+        })
+      }
+
+      const userData = validationResult.data
+
+      // 🔍 Validaciones adicionales
+      // Verificar que el workspace es apropiado para el rol
+      const isValidRoleWorkspaceCombination = permissionService.validateRoleWorkspaceCombination(userData.role, userData.workspace)
+      if (!isValidRoleWorkspaceCombination.valid) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Invalid role-workspace combination',
+          details: isValidRoleWorkspaceCombination.reason
+        })
+      }
+
+      // 👤 Crear usuario
+      const newUser = await userService.createUser(userData, authenticatedUser.id)
+
+      // 🎯 Formatear respuesta (sin datos sensibles)
+      const responseUser = {
+        id: newUser.id,
+        email: newUser.email,
+        fullName: newUser.fullName,
+        role: newUser.role,
+        workspace: newUser.workspace,
+        isActive: newUser.isActive,
+        createdAt: newUser.createdAt.toISOString(),
+        updatedAt: newUser.updatedAt.toISOString()
+      }
+
+      // ✅ Respuesta exitosa
+      return reply.status(201).send({
+        success: true,
+        message: `User created successfully: ${newUser.email}`,
+        data: {
+          user: responseUser,
+          createdBy: {
+            id: authenticatedUser.id,
+            fullName: authenticatedUser.fullName,
+            role: authenticatedUser.role
+          }
+        }
+      })
+
+    } catch (error: any) {
+      console.error('❌ Create user error:', error)
+
+      // 🚨 Error de email duplicado
+      if (error.message.includes('Email already exists')) {
+        return reply.status(409).send({
+          success: false,
+          error: 'Email already exists',
+          details: 'A user with this email address already exists'
+        })
+      }
+
+      // 🚨 Error de validación
+      if (error.message.includes('validation') || error.message.includes('Invalid')) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Validation error',
+          details: error.message
+        })
+      }
+
+      // 🚨 Error de base de datos
+      if (error.message.includes('Database') || error.message.includes('Prisma')) {
+        return reply.status(500).send({
+          success: false,
+          error: 'Database error',
+          details: 'Failed to create user in database'
+        })
+      }
+
+      // 🚨 Error general
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error',
+        details: 'An unexpected error occurred while creating the user'
+      })
     }
   })
 }
+
+// 🎯 Exportar como plugin de Fastify
+export const createRoute = fp(createRoutePlugin, {
+  name: 'user-create-routes'
+})

@@ -22,9 +22,7 @@ type BulkArchiveBody = z.infer<typeof bulkArchiveSchema>
 export async function archiveRoute(fastify: FastifyInstance): Promise<void> {
   
   // 📦 Archivar documento individual
-  fastify.route({
-    method: 'PUT',
-    url: '/documents/:id/archive',
+  fastify.put('/:id/archive', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Archive a single document (changes status from stored to archived)',
@@ -209,9 +207,7 @@ export async function archiveRoute(fastify: FastifyInstance): Promise<void> {
   })
 
   // 📦 Archivado masivo de documentos
-  fastify.route({
-    method: 'PUT',
-    url: '/documents/archive/bulk',
+  fastify.put('/archive/bulk', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Archive multiple documents at once (admin or secretary only)',

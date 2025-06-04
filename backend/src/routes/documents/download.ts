@@ -17,9 +17,7 @@ type DownloadQuery = z.infer<typeof querySchema>
 
 // 📥 Ruta para descargar documentos
 export async function downloadRoute(fastify: FastifyInstance): Promise<void> {
-  fastify.route({
-    method: 'GET',
-    url: '/documents/:id/download',
+  fastify.get('/:id/download', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Download a document file',
@@ -179,9 +177,7 @@ export async function downloadRoute(fastify: FastifyInstance): Promise<void> {
   })
 
   // 🔗 Ruta adicional para generar URL de descarga temporal
-  fastify.route({
-    method: 'GET',
-    url: '/documents/:id/download-url',
+  fastify.get('/:id/download-url', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Generate a temporary download URL for a document',

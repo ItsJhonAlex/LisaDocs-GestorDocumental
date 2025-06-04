@@ -1,45 +1,39 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import { notificationService } from '../../services/notificationService'
 import { z } from 'zod'
 
-// 📋 Schemas de validación
-const markReadSchema = z.object({
-  notificationIds: z.array(z.string().uuid()).min(1).max(100).optional(),
-  markAll: z.boolean().default(false),
-  filters: z.object({
-    type: z.enum(['info', 'success', 'warning', 'error', 'announcement', 'reminder', 'task', 'alert']).optional(),
-    priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
-    category: z.string().max(50).optional(),
-    olderThan: z.string().datetime().optional()
-  }).optional()
+// 📋 Schema de validación para marcar como leída
+const markAsReadSchema = z.object({
+  notificationId: z.string().uuid('Invalid notification ID format')
 })
 
-const archiveSchema = z.object({
-  notificationIds: z.array(z.string().uuid()).min(1).max(100).optional(),
-  archiveAll: z.boolean().default(false),
-  autoArchiveRead: z.boolean().default(false),
-  olderThanDays: z.number().min(1).max(365).optional()
+// 📋 Schema para marcar múltiples como leídas
+const markMultipleAsReadSchema = z.object({
+  notificationIds: z.array(z.string().uuid()).min(1, 'At least one notification ID is required').max(50, 'Maximum 50 notifications at once')
 })
 
-type MarkReadRequest = z.infer<typeof markReadSchema>
-type ArchiveRequest = z.infer<typeof archiveSchema>
+type MarkAsReadParams = z.infer<typeof markAsReadSchema>
+type MarkMultipleAsReadBody = z.infer<typeof markMultipleAsReadSchema>
 
-// 📧 Rutas para manejo de lectura de notificaciones
-export async function readNotificationRoute(fastify: FastifyInstance): Promise<void> {
-  
-  // ✅ PUT /notifications/:id/read - Marcar una notificación como leída
-  fastify.route({
-    method: 'PUT',
-    url: '/notifications/:id/read',
+// 📧 Rutas para manejar estado de lectura de notificaciones
+export async function notificationReadRoute(fastify: FastifyInstance): Promise<void> {
+
+  // 📧 PUT /:id/read - Marcar notificación específica como leída
+  fastify.put('/:notificationId/read', {
     preHandler: fastify.authenticate,
     schema: {
-      description: 'Mark a notification as read',
+      description: 'Mark a specific notification as read',
       tags: ['Notifications'],
       params: {
         type: 'object',
         properties: {
-          id: { type: 'string', format: 'uuid' }
+          notificationId: { 
+            type: 'string', 
+            format: 'uuid',
+            description: 'Notification ID to mark as read'
+          }
         },
-        required: ['id']
+        required: ['notificationId']
       },
       response: {
         200: {
@@ -51,55 +45,76 @@ export async function readNotificationRoute(fastify: FastifyInstance): Promise<v
               type: 'object',
               properties: {
                 notificationId: { type: 'string' },
-                readAt: { type: 'string' },
-                wasAlreadyRead: { type: 'boolean' }
+                readAt: { type: 'string' }
               }
             }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' },
+            details: { type: 'string' }
+          }
+        },
+        404: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' },
+            details: { type: 'string' }
           }
         }
       }
     },
 
-    handler: async (request: FastifyRequest<{
-      Params: { id: string }
-    }>, reply: FastifyReply) => {
+    handler: async (request: FastifyRequest<{ Params: MarkAsReadParams }>, reply: FastifyReply) => {
       try {
+        // 🔐 Obtener usuario autenticado
         const user = (request as any).user
-        const { id } = request.params
-
-        // 🔍 Validar UUID
-        if (!id || !z.string().uuid().safeParse(id).success) {
-          return reply.status(400).send({
+        if (!user?.id) {
+          return reply.status(401).send({
             success: false,
-            error: 'Invalid notification ID',
-            details: 'Notification ID must be a valid UUID'
+            error: 'Authentication required',
+            details: 'User not authenticated'
           })
         }
 
-        // ✅ Marcar como leída
-        const { notificationService } = require('../../services/notificationService')
-        const result = await notificationService.markAsRead(id, user.id)
+        // 📋 Validar parámetros
+        const validationResult = markAsReadSchema.safeParse(request.params)
+        if (!validationResult.success) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Invalid notification ID',
+            details: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+          })
+        }
+
+        const { notificationId } = validationResult.data
+
+        // 📧 Marcar como leída
+        const result = await notificationService.markAsRead(notificationId, user.id)
+
+        if (!result.success) {
+          return reply.status(404).send({
+            success: false,
+            error: 'Notification not found',
+            details: 'Notification not found or you do not have access to it'
+          })
+        }
 
         return reply.status(200).send({
           success: true,
-          message: result.wasAlreadyRead ? 'Notification was already read' : 'Notification marked as read successfully',
+          message: 'Notification marked as read',
           data: {
-            notificationId: id,
-            readAt: result.readAt,
-            wasAlreadyRead: result.wasAlreadyRead || false
+            notificationId,
+            readAt: result.readAt
           }
         })
 
       } catch (error: any) {
         console.error('❌ Mark notification as read error:', error)
-
-        if (error.message.includes('not found') || error.message.includes('does not exist')) {
-          return reply.status(404).send({
-            success: false,
-            error: 'Notification not found',
-            details: 'The specified notification does not exist or you do not have access to it'
-          })
-        }
 
         return reply.status(500).send({
           success: false,
@@ -110,10 +125,8 @@ export async function readNotificationRoute(fastify: FastifyInstance): Promise<v
     }
   })
 
-  // ✅ PUT /notifications/read/bulk - Marcar múltiples notificaciones como leídas
-  fastify.route({
-    method: 'PUT',
-    url: '/notifications/read/bulk',
+  // 📧 PUT /read-multiple - Marcar múltiples notificaciones como leídas
+  fastify.put('/read-multiple', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Mark multiple notifications as read',
@@ -125,22 +138,11 @@ export async function readNotificationRoute(fastify: FastifyInstance): Promise<v
             type: 'array', 
             items: { type: 'string', format: 'uuid' },
             minItems: 1,
-            maxItems: 100
-          },
-          markAll: { type: 'boolean', default: false },
-          filters: {
-            type: 'object',
-            properties: {
-              type: { 
-                type: 'string', 
-                enum: ['info', 'success', 'warning', 'error', 'announcement', 'reminder', 'task', 'alert'] 
-              },
-              priority: { type: 'string', enum: ['low', 'normal', 'high', 'urgent'] },
-              category: { type: 'string', maxLength: 50 },
-              olderThan: { type: 'string', format: 'date-time' }
-            }
+            maxItems: 50,
+            description: 'Array of notification IDs to mark as read'
           }
-        }
+        },
+        required: ['notificationIds']
       },
       response: {
         200: {
@@ -152,9 +154,7 @@ export async function readNotificationRoute(fastify: FastifyInstance): Promise<v
               type: 'object',
               properties: {
                 markedCount: { type: 'number' },
-                alreadyReadCount: { type: 'number' },
-                failedCount: { type: 'number' },
-                details: { type: 'array' }
+                failedIds: { type: 'array' }
               }
             }
           }
@@ -162,56 +162,49 @@ export async function readNotificationRoute(fastify: FastifyInstance): Promise<v
       }
     },
 
-    handler: async (request: FastifyRequest<{
-      Body: MarkReadRequest
-    }>, reply: FastifyReply) => {
+    handler: async (request: FastifyRequest<{ Body: MarkMultipleAsReadBody }>, reply: FastifyReply) => {
       try {
         const user = (request as any).user
 
-        // 📋 Validar datos de entrada
-        const validationResult = markReadSchema.safeParse(request.body)
+        // 📋 Validar datos
+        const validationResult = markMultipleAsReadSchema.safeParse(request.body)
         if (!validationResult.success) {
           return reply.status(400).send({
             success: false,
-            error: 'Validation error',
+            error: 'Invalid notification IDs',
             details: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
           })
         }
 
-        const { notificationIds, markAll, filters } = validationResult.data
+        const { notificationIds } = validationResult.data
 
-        // 🔍 Validar que se proporcione al menos una opción
-        if (!notificationIds && !markAll) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Invalid request',
-            details: 'Must provide either notificationIds or markAll=true'
-          })
+        // 📧 Marcar múltiples como leídas (usando markAsRead individualmente)
+        const results = {
+          markedCount: 0,
+          failedIds: [] as string[]
         }
 
-        // ✅ Marcar notificaciones como leídas
-        const { notificationService } = require('../../services/notificationService')
-        let result
-
-        if (markAll) {
-          result = await notificationService.markAllAsRead(user.id, filters)
+        for (const notificationId of notificationIds) {
+          try {
+            const result = await notificationService.markAsRead(notificationId, user.id)
+            if (result.success) {
+              results.markedCount++
         } else {
-          result = await notificationService.markMultipleAsRead(notificationIds!, user.id)
+              results.failedIds.push(notificationId)
+            }
+          } catch (error) {
+            results.failedIds.push(notificationId)
+          }
         }
 
         return reply.status(200).send({
           success: true,
-          message: `Successfully marked ${result.markedCount} notifications as read`,
-          data: {
-            markedCount: result.markedCount,
-            alreadyReadCount: result.alreadyReadCount || 0,
-            failedCount: result.failedCount || 0,
-            details: result.details || []
-          }
+          message: `${results.markedCount} notifications marked as read`,
+          data: results
         })
 
       } catch (error: any) {
-        console.error('❌ Bulk mark as read error:', error)
+        console.error('❌ Mark multiple notifications as read error:', error)
         
         return reply.status(500).send({
           success: false,
@@ -222,21 +215,12 @@ export async function readNotificationRoute(fastify: FastifyInstance): Promise<v
     }
   })
 
-  // ❌ PUT /notifications/:id/unread - Marcar notificación como no leída
-  fastify.route({
-    method: 'PUT',
-    url: '/notifications/:id/unread',
+  // 📧 PUT /read-all - Marcar todas las notificaciones como leídas
+  fastify.put('/read-all', {
     preHandler: fastify.authenticate,
     schema: {
-      description: 'Mark a notification as unread',
+      description: 'Mark all user notifications as read',
       tags: ['Notifications'],
-      params: {
-        type: 'object',
-        properties: {
-          id: { type: 'string', format: 'uuid' }
-        },
-        required: ['id']
-      },
       response: {
         200: {
           type: 'object',
@@ -246,8 +230,7 @@ export async function readNotificationRoute(fastify: FastifyInstance): Promise<v
             data: {
               type: 'object',
               properties: {
-                notificationId: { type: 'string' },
-                markedUnreadAt: { type: 'string' }
+                markedCount: { type: 'number' }
               }
             }
           }
@@ -255,70 +238,57 @@ export async function readNotificationRoute(fastify: FastifyInstance): Promise<v
       }
     },
 
-    handler: async (request: FastifyRequest<{
-      Params: { id: string }
-    }>, reply: FastifyReply) => {
+    handler: async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const user = (request as any).user
-        const { id } = request.params
 
-        // 🔍 Validar UUID
-        if (!z.string().uuid().safeParse(id).success) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Invalid notification ID',
-            details: 'Notification ID must be a valid UUID'
-          })
+        // 📧 Obtener todas las notificaciones no leídas
+        const notifications = await notificationService.getUserNotifications(user.id, {
+          isRead: false,
+          limit: 1000  // Asumiendo que no hay más de 1000 notificaciones no leídas
+        })
+
+        let markedCount = 0
+
+        // 📧 Marcar todas como leídas
+        for (const notification of notifications.notifications) {
+          try {
+            const result = await notificationService.markAsRead(notification.notificationId, user.id)
+            if (result.success) {
+              markedCount++
+            }
+          } catch (error) {
+            // Continuar con la siguiente notificación
+            console.error(`❌ Failed to mark notification ${notification.notificationId} as read:`, error)
+          }
         }
-
-        // ❌ Marcar como no leída
-        const { notificationService } = require('../../services/notificationService')
-        const result = await notificationService.markAsUnread(id, user.id)
 
         return reply.status(200).send({
           success: true,
-          message: 'Notification marked as unread successfully',
+          message: `All ${markedCount} notifications marked as read`,
           data: {
-            notificationId: id,
-            markedUnreadAt: result.markedUnreadAt
+            markedCount
           }
         })
 
       } catch (error: any) {
-        console.error('❌ Mark notification as unread error:', error)
-
-        if (error.message.includes('not found')) {
-          return reply.status(404).send({
-            success: false,
-            error: 'Notification not found',
-            details: 'The specified notification does not exist or you do not have access to it'
-          })
-        }
+        console.error('❌ Mark all notifications as read error:', error)
 
         return reply.status(500).send({
           success: false,
           error: 'Internal server error',
-          details: 'Failed to mark notification as unread'
+          details: 'Failed to mark all notifications as read'
         })
       }
     }
   })
 
-  // 📦 PUT /notifications/:id/archive - Archivar notificación
-  fastify.route({
-    method: 'PUT',
-    url: '/notifications/:id/archive',
+  // 📧 GET /unread-count - Obtener conteo de notificaciones no leídas
+  fastify.get('/unread-count', {
     preHandler: fastify.authenticate,
     schema: {
-      description: 'Archive a notification',
+      description: 'Get count of unread notifications for the current user',
       tags: ['Notifications'],
-      params: {
-        type: 'object',
-        properties: {
-          id: { type: 'string', format: 'uuid' }
-        },
-        required: ['id']
-      },
       response: {
         200: {
           type: 'object',
@@ -328,9 +298,8 @@ export async function readNotificationRoute(fastify: FastifyInstance): Promise<v
             data: {
               type: 'object',
               properties: {
-                notificationId: { type: 'string' },
-                archivedAt: { type: 'string' },
-                wasAlreadyArchived: { type: 'boolean' }
+                unreadCount: { type: 'number' },
+                lastChecked: { type: 'string' }
               }
             }
           }
@@ -338,243 +307,36 @@ export async function readNotificationRoute(fastify: FastifyInstance): Promise<v
       }
     },
 
-    handler: async (request: FastifyRequest<{
-      Params: { id: string }
-    }>, reply: FastifyReply) => {
+    handler: async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const user = (request as any).user
-        const { id } = request.params
 
-        // 🔍 Validar UUID
-        if (!z.string().uuid().safeParse(id).success) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Invalid notification ID',
-            details: 'Notification ID must be a valid UUID'
-          })
-        }
-
-        // 📦 Archivar notificación
-        const { notificationService } = require('../../services/notificationService')
-        const result = await notificationService.archiveNotification(id, user.id)
+        // 📊 Obtener conteo de no leídas usando getUserNotifications
+        const result = await notificationService.getUserNotifications(user.id, {
+          isRead: false,
+          limit: 1  // Solo necesitamos el conteo total
+        })
 
         return reply.status(200).send({
           success: true,
-          message: result.wasAlreadyArchived ? 'Notification was already archived' : 'Notification archived successfully',
+          message: 'Unread count retrieved successfully',
           data: {
-            notificationId: id,
-            archivedAt: result.archivedAt,
-            wasAlreadyArchived: result.wasAlreadyArchived || false
+            unreadCount: result.unreadCount,
+            lastChecked: new Date().toISOString()
           }
         })
 
       } catch (error: any) {
-        console.error('❌ Archive notification error:', error)
-
-        if (error.message.includes('not found')) {
-          return reply.status(404).send({
-            success: false,
-            error: 'Notification not found',
-            details: 'The specified notification does not exist or you do not have access to it'
-          })
-        }
-
-        return reply.status(500).send({
-          success: false,
-          error: 'Internal server error',
-          details: 'Failed to archive notification'
-        })
-      }
-    }
-  })
-
-  // 📦 PUT /notifications/archive/bulk - Archivar múltiples notificaciones
-  fastify.route({
-    method: 'PUT',
-    url: '/notifications/archive/bulk',
-    preHandler: fastify.authenticate,
-    schema: {
-      description: 'Archive multiple notifications',
-      tags: ['Notifications'],
-      body: {
-        type: 'object',
-        properties: {
-          notificationIds: { 
-            type: 'array', 
-            items: { type: 'string', format: 'uuid' },
-            minItems: 1,
-            maxItems: 100
-          },
-          archiveAll: { type: 'boolean', default: false },
-          autoArchiveRead: { type: 'boolean', default: false },
-          olderThanDays: { type: 'number', minimum: 1, maximum: 365 }
-        }
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                archivedCount: { type: 'number' },
-                alreadyArchivedCount: { type: 'number' },
-                failedCount: { type: 'number' },
-                details: { type: 'array' }
-              }
-            }
-          }
-        }
-      }
-    },
-
-    handler: async (request: FastifyRequest<{
-      Body: ArchiveRequest
-    }>, reply: FastifyReply) => {
-      try {
-        const user = (request as any).user
-
-        // 📋 Validar datos de entrada
-        const validationResult = archiveSchema.safeParse(request.body)
-        if (!validationResult.success) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Validation error',
-            details: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
-          })
-        }
-
-        const { notificationIds, archiveAll, autoArchiveRead, olderThanDays } = validationResult.data
-
-        // 🔍 Validar que se proporcione al menos una opción
-        if (!notificationIds && !archiveAll && !autoArchiveRead && !olderThanDays) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Invalid request',
-            details: 'Must provide notificationIds, archiveAll, autoArchiveRead, or olderThanDays'
-          })
-        }
-
-        // 📦 Archivar notificaciones
-        const { notificationService } = require('../../services/notificationService')
-        let result
-
-        if (archiveAll) {
-          result = await notificationService.archiveAllNotifications(user.id)
-        } else if (autoArchiveRead) {
-          result = await notificationService.archiveReadNotifications(user.id, olderThanDays)
-        } else if (olderThanDays) {
-          result = await notificationService.archiveOldNotifications(user.id, olderThanDays)
-        } else {
-          result = await notificationService.archiveMultipleNotifications(notificationIds!, user.id)
-        }
-
-        return reply.status(200).send({
-          success: true,
-          message: `Successfully archived ${result.archivedCount} notifications`,
-          data: {
-            archivedCount: result.archivedCount,
-            alreadyArchivedCount: result.alreadyArchivedCount || 0,
-            failedCount: result.failedCount || 0,
-            details: result.details || []
-          }
-        })
-
-      } catch (error: any) {
-        console.error('❌ Bulk archive error:', error)
+        console.error('❌ Get unread count error:', error)
         
         return reply.status(500).send({
           success: false,
           error: 'Internal server error',
-          details: 'Failed to archive notifications'
-        })
-      }
-    }
-  })
-
-  // 🔄 PUT /notifications/:id/restore - Restaurar notificación archivada
-  fastify.route({
-    method: 'PUT',
-    url: '/notifications/:id/restore',
-    preHandler: fastify.authenticate,
-    schema: {
-      description: 'Restore an archived notification',
-      tags: ['Notifications'],
-      params: {
-        type: 'object',
-        properties: {
-          id: { type: 'string', format: 'uuid' }
-        },
-        required: ['id']
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                notificationId: { type: 'string' },
-                restoredAt: { type: 'string' }
-              }
-            }
-          }
-        }
-      }
-    },
-
-    handler: async (request: FastifyRequest<{
-      Params: { id: string }
-    }>, reply: FastifyReply) => {
-      try {
-        const user = (request as any).user
-        const { id } = request.params
-
-        // 🔍 Validar UUID
-        if (!z.string().uuid().safeParse(id).success) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Invalid notification ID',
-            details: 'Notification ID must be a valid UUID'
-          })
-        }
-
-        // 🔄 Restaurar notificación
-        const { notificationService } = require('../../services/notificationService')
-        const result = await notificationService.restoreNotification(id, user.id)
-
-        return reply.status(200).send({
-          success: true,
-          message: 'Notification restored successfully',
-          data: {
-            notificationId: id,
-            restoredAt: result.restoredAt
-          }
-        })
-
-      } catch (error: any) {
-        console.error('❌ Restore notification error:', error)
-
-        if (error.message.includes('not found')) {
-          return reply.status(404).send({
-            success: false,
-            error: 'Notification not found',
-            details: 'The specified notification does not exist or is not archived'
-          })
-        }
-
-        return reply.status(500).send({
-          success: false,
-          error: 'Internal server error',
-          details: 'Failed to restore notification'
+          details: 'Failed to get unread count'
         })
       }
     }
   })
 }
 
-export default readNotificationRoute
+export default notificationReadRoute

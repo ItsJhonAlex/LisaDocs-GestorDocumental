@@ -21,9 +21,7 @@ type CamFilters = z.infer<typeof camFiltersSchema>
 export async function camRoutes(fastify: FastifyInstance): Promise<void> {
 
   // 📋 GET /workspaces/cam/documents - Documentos específicos de CAM
-  fastify.route({
-    method: 'GET',
-    url: '/documents',
+  fastify.get('/documents', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get CAM workspace documents with commercial filters',
@@ -165,9 +163,7 @@ export async function camRoutes(fastify: FastifyInstance): Promise<void> {
   })
 
   // 📊 GET /workspaces/cam/dashboard - Dashboard específico de CAM
-  fastify.route({
-    method: 'GET',
-    url: '/dashboard',
+  fastify.get('/dashboard', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get CAM workspace dashboard with commercial metrics',
@@ -252,9 +248,7 @@ export async function camRoutes(fastify: FastifyInstance): Promise<void> {
   })
 
   // 📈 GET /workspaces/cam/reports - Reportes específicos de CAM
-  fastify.route({
-    method: 'GET',
-    url: '/reports',
+  fastify.get('/reports', {
     preHandler: fastify.authenticate,
     schema: {
       description: 'Get CAM workspace reports and analytics',

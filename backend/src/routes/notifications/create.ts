@@ -1,107 +1,66 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { notificationService } from '../../services/notificationService'
 import { permissionService } from '../../services/permissionService'
+import { NotificationType, WorkspaceType, UserRole } from '../../generated/prisma'
 import { z } from 'zod'
 
-// 📋 Schemas de validación
+// 📋 Schema de validación para crear notificación individual
 const createNotificationSchema = z.object({
-  title: z.string().min(1).max(200),
-  content: z.string().min(1).max(1000),
-  type: z.enum(['info', 'success', 'warning', 'error', 'announcement', 'reminder', 'task', 'alert']),
-  priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
-  recipients: z.object({
-    type: z.enum(['all', 'role', 'workspace', 'specific', 'custom']),
-    roles: z.array(z.string()).optional(),
-    workspaces: z.array(z.string()).optional(),
-    userIds: z.array(z.string().uuid()).optional(),
-    excludeUsers: z.array(z.string().uuid()).optional()
-  }),
-  delivery: z.object({
-    immediate: z.boolean().default(true),
-    email: z.boolean().default(false),
-    browser: z.boolean().default(true),
-    scheduledAt: z.string().datetime().optional()
-  }).optional(),
-  metadata: z.record(z.any()).optional(),
-  expiresAt: z.string().datetime().optional(),
-  actionRequired: z.boolean().default(false),
-  actionUrl: z.string().url().optional(),
-  actionText: z.string().max(50).optional(),
-  category: z.string().max(50).optional(),
-  tags: z.array(z.string().max(30)).max(10).optional()
+  title: z.string().min(1, 'Title is required').max(255, 'Title too long'),
+  message: z.string().min(1, 'Message is required').max(1000, 'Message too long'),
+  type: z.nativeEnum(NotificationType, { message: 'Invalid notification type' }),
+  userId: z.string().uuid('Invalid user ID'),
+  relatedDocumentId: z.string().uuid().optional(),
+  expiresAt: z.string().optional()
 })
 
+// 📋 Schema de validación para notificaciones masivas
 const createBulkNotificationSchema = z.object({
-  notifications: z.array(createNotificationSchema).min(1).max(100),
-  batchOptions: z.object({
-    delayBetween: z.number().min(0).max(60000).default(100), // ms
-    failurePolicy: z.enum(['stop', 'continue', 'retry']).default('continue'),
-    retryAttempts: z.number().min(0).max(5).default(3)
-  }).optional()
+  notifications: z.array(z.object({
+    title: z.string().min(1).max(255),
+    message: z.string().min(1).max(1000),
+    type: z.nativeEnum(NotificationType),
+    userId: z.string().uuid(),
+    relatedDocumentId: z.string().uuid().optional()
+  })).min(1, 'At least one notification required').max(100, 'Maximum 100 notifications at once')
+})
+
+// 📋 Schema para anuncios del sistema
+const createAnnouncementSchema = z.object({
+  title: z.string().min(1).max(255),
+  message: z.string().min(1).max(2000),
+  targetWorkspaces: z.array(z.nativeEnum(WorkspaceType)).optional(),
+  targetRoles: z.array(z.nativeEnum(UserRole)).optional(),
+  expiresAt: z.string().optional()
 })
 
 type CreateNotificationData = z.infer<typeof createNotificationSchema>
 type BulkNotificationData = z.infer<typeof createBulkNotificationSchema>
+type AnnouncementData = z.infer<typeof createAnnouncementSchema>
 
 // 📧 Rutas para crear notificaciones
 export async function createNotificationRoute(fastify: FastifyInstance): Promise<void> {
-  
-  // 📧 POST /notifications/create - Crear una notificación individual
-  fastify.route({
-    method: 'POST',
-    url: '/notifications/create',
+
+  // 📧 POST /notifications - Crear notificación individual
+  fastify.post('/', {
     preHandler: fastify.authenticate,
     schema: {
+      description: 'Create a single notification',
+      tags: ['Notifications'],
       body: {
         type: 'object',
         properties: {
-          title: { type: 'string', minLength: 1, maxLength: 200 },
-          content: { type: 'string', minLength: 1, maxLength: 1000 },
+          title: { type: 'string', minLength: 1, maxLength: 255 },
+          message: { type: 'string', minLength: 1, maxLength: 1000 },
           type: { 
             type: 'string', 
-            enum: ['info', 'success', 'warning', 'error', 'announcement', 'reminder', 'task', 'alert'] 
+            enum: ['document_uploaded', 'document_archived', 'system_message', 'warning']
           },
-          priority: { 
-            type: 'string', 
-            enum: ['low', 'normal', 'high', 'urgent'],
-            default: 'normal'
-          },
-          recipients: {
-            type: 'object',
-            properties: {
-              type: { 
-                type: 'string', 
-                enum: ['all', 'role', 'workspace', 'specific', 'custom'] 
-              },
-              roles: { type: 'array', items: { type: 'string' } },
-              workspaces: { type: 'array', items: { type: 'string' } },
-              userIds: { type: 'array', items: { type: 'string', format: 'uuid' } },
-              excludeUsers: { type: 'array', items: { type: 'string', format: 'uuid' } }
-            },
-            required: ['type']
-          },
-          delivery: {
-            type: 'object',
-            properties: {
-              immediate: { type: 'boolean', default: true },
-              email: { type: 'boolean', default: false },
-              browser: { type: 'boolean', default: true },
-              scheduledAt: { type: 'string', format: 'date-time' }
-            }
-          },
-          metadata: { type: 'object' },
-          expiresAt: { type: 'string', format: 'date-time' },
-          actionRequired: { type: 'boolean', default: false },
-          actionUrl: { type: 'string', format: 'uri' },
-          actionText: { type: 'string', maxLength: 50 },
-          category: { type: 'string', maxLength: 50 },
-          tags: { 
-            type: 'array', 
-            items: { type: 'string', maxLength: 30 },
-            maxItems: 10
-          }
+          userId: { type: 'string', format: 'uuid' },
+          relatedDocumentId: { type: 'string', format: 'uuid' },
+          expiresAt: { type: 'string', format: 'date-time' }
         },
-        required: ['title', 'content', 'type', 'recipients']
+        required: ['title', 'message', 'type', 'userId']
       },
       response: {
         201: {
@@ -114,30 +73,53 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
               properties: {
                 notificationId: { type: 'string' },
                 status: { type: 'string' },
-                recipientCount: { type: 'number' },
-                deliveryStatus: { type: 'object' },
-                scheduledAt: { type: 'string' }
+                recipientCount: { type: 'number' }
               }
             }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' },
+            details: { type: 'string' }
+          }
+        },
+        403: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' },
+            details: { type: 'string' }
           }
         }
       }
     },
 
-    handler: async (request: FastifyRequest<{
-      Body: CreateNotificationData
-    }>, reply: FastifyReply) => {
+    handler: async (request: FastifyRequest<{ Body: CreateNotificationData }>, reply: FastifyReply) => {
       try {
+        // 🔐 Obtener usuario autenticado
         const user = (request as any).user
-        
+        if (!user?.id) {
+          return reply.status(401).send({
+            success: false,
+            error: 'Authentication required',
+            details: 'User not authenticated'
+          })
+        }
+
         // 🔐 Verificar permisos para crear notificaciones
         const capabilities = await permissionService.getUserCapabilities(user.id)
-        const canCreateNotifications = capabilities.admin.systemSettings || user.role === 'administrador' || user.role === 'presidente'
+        const canCreateNotifications = capabilities.admin.systemSettings || 
+                                     user.role === 'administrador' ||
+                                     ['presidente', 'vicepresidente'].includes(user.role)
+        
         if (!canCreateNotifications) {
           return reply.status(403).send({
             success: false,
             error: 'Access denied',
-            details: 'You do not have permission to create notifications for the specified recipients'
+            details: 'You do not have permission to create notifications'
           })
         }
 
@@ -152,10 +134,7 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
         }
 
         // 📧 Crear notificación
-        const result = await notificationService.createNotification({
-          ...validationResult.data,
-          createdBy: user.id
-        })
+        const result = await notificationService.createNotification(validationResult.data)
 
         return reply.status(201).send({
           success: true,
@@ -175,12 +154,12 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
     }
   })
 
-  // 📧 POST /notifications/create/bulk - Crear múltiples notificaciones
-  fastify.route({
-    method: 'POST',
-    url: '/notifications/create/bulk',
+  // 📧 POST /notifications/bulk - Crear múltiples notificaciones
+  fastify.post('/bulk', {
     preHandler: fastify.authenticate,
     schema: {
+      description: 'Create multiple notifications at once',
+      tags: ['Notifications'],
       body: {
         type: 'object',
         properties: {
@@ -189,48 +168,19 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
             items: {
               type: 'object',
               properties: {
-                title: { type: 'string', minLength: 1, maxLength: 200 },
-                content: { type: 'string', minLength: 1, maxLength: 1000 },
+                title: { type: 'string', minLength: 1, maxLength: 255 },
+                message: { type: 'string', minLength: 1, maxLength: 1000 },
                 type: { 
                   type: 'string', 
-                  enum: ['info', 'success', 'warning', 'error', 'announcement', 'reminder', 'task', 'alert'] 
+                  enum: ['document_uploaded', 'document_archived', 'system_message', 'warning']
                 },
-                priority: { 
-                  type: 'string', 
-                  enum: ['low', 'normal', 'high', 'urgent'],
-                  default: 'normal'
-                },
-                recipients: {
-                  type: 'object',
-                  properties: {
-                    type: { 
-                      type: 'string', 
-                      enum: ['all', 'role', 'workspace', 'specific', 'custom'] 
-                    },
-                    roles: { type: 'array', items: { type: 'string' } },
-                    workspaces: { type: 'array', items: { type: 'string' } },
-                    userIds: { type: 'array', items: { type: 'string', format: 'uuid' } },
-                    excludeUsers: { type: 'array', items: { type: 'string', format: 'uuid' } }
-                  },
-                  required: ['type']
-                }
+                userId: { type: 'string', format: 'uuid' },
+                relatedDocumentId: { type: 'string', format: 'uuid' }
               },
-              required: ['title', 'content', 'type', 'recipients']
+              required: ['title', 'message', 'type', 'userId']
             },
             minItems: 1,
             maxItems: 100
-          },
-          batchOptions: {
-            type: 'object',
-            properties: {
-              delayBetween: { type: 'number', minimum: 0, maximum: 60000, default: 100 },
-              failurePolicy: { 
-                type: 'string', 
-                enum: ['stop', 'continue', 'retry'],
-                default: 'continue'
-              },
-              retryAttempts: { type: 'number', minimum: 0, maximum: 5, default: 3 }
-            }
           }
         },
         required: ['notifications']
@@ -249,8 +199,7 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
                 successCount: { type: 'number' },
                 failureCount: { type: 'number' },
                 status: { type: 'string' },
-                results: { type: 'array' },
-                estimatedCompletion: { type: 'string' }
+                results: { type: 'array' }
               }
             }
           }
@@ -258,9 +207,7 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
       }
     },
 
-    handler: async (request: FastifyRequest<{
-      Body: BulkNotificationData
-    }>, reply: FastifyReply) => {
+    handler: async (request: FastifyRequest<{ Body: BulkNotificationData }>, reply: FastifyReply) => {
       try {
         const user = (request as any).user
         
@@ -286,10 +233,7 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
         }
 
         // 📧 Crear notificaciones en lote
-        const result = await notificationService.createBulkNotifications({
-          ...validationResult.data,
-          createdBy: user.id
-        })
+        const result = await notificationService.createBulkNotifications(validationResult.data)
 
         return reply.status(201).send({
           success: true,
@@ -309,36 +253,34 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
     }
   })
 
-  // 📧 POST /notifications/create/announcement - Crear anuncio del sistema
-  fastify.route({
-    method: 'POST',
-    url: '/notifications/create/announcement',
+  // 📧 POST /notifications/announcement - Crear anuncio del sistema
+  fastify.post('/announcement', {
     preHandler: fastify.authenticate,
     schema: {
+      description: 'Create system-wide announcement',
+      tags: ['Notifications'],
       body: {
         type: 'object',
         properties: {
-          title: { type: 'string', minLength: 1, maxLength: 200 },
-          content: { type: 'string', minLength: 1, maxLength: 2000 },
-          priority: { 
-            type: 'string', 
-            enum: ['normal', 'high', 'urgent'],
-            default: 'normal'
+          title: { type: 'string', minLength: 1, maxLength: 255 },
+          message: { type: 'string', minLength: 1, maxLength: 2000 },
+          targetWorkspaces: { 
+            type: 'array', 
+            items: { 
+              type: 'string',
+              enum: ['cam', 'ampp', 'presidencia', 'intendencia', 'comisiones_cf']
+            }
           },
-          scope: {
-            type: 'string',
-            enum: ['system', 'workspace', 'role'],
-            default: 'system'
+          targetRoles: { 
+            type: 'array', 
+            items: { 
+              type: 'string',
+              enum: ['administrador', 'presidente', 'vicepresidente', 'secretario_cam', 'secretario_ampp', 'secretario_cf', 'intendente', 'cf_member']
+            }
           },
-          targetWorkspaces: { type: 'array', items: { type: 'string' } },
-          targetRoles: { type: 'array', items: { type: 'string' } },
-          publishAt: { type: 'string', format: 'date-time' },
-          expiresAt: { type: 'string', format: 'date-time' },
-          pinned: { type: 'boolean', default: false },
-          allowComments: { type: 'boolean', default: false },
-          requireAcknowledgment: { type: 'boolean', default: false }
+          expiresAt: { type: 'string', format: 'date-time' }
         },
-        required: ['title', 'content']
+        required: ['title', 'message']
       },
       response: {
         201: {
@@ -351,9 +293,7 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
               properties: {
                 announcementId: { type: 'string' },
                 status: { type: 'string' },
-                recipientCount: { type: 'number' },
-                publishAt: { type: 'string' },
-                expiresAt: { type: 'string' }
+                recipientCount: { type: 'number' }
               }
             }
           }
@@ -361,40 +301,31 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
       }
     },
 
-    handler: async (request: FastifyRequest<{
-      Body: {
-        title: string
-        content: string
-        priority?: string
-        scope?: string
-        targetWorkspaces?: string[]
-        targetRoles?: string[]
-        publishAt?: string
-        expiresAt?: string
-        pinned?: boolean
-        allowComments?: boolean
-        requireAcknowledgment?: boolean
-      }
-    }>, reply: FastifyReply) => {
+    handler: async (request: FastifyRequest<{ Body: AnnouncementData }>, reply: FastifyReply) => {
       try {
         const user = (request as any).user
-        
-        // 🔐 Verificar permisos para crear anuncios
-        const capabilities = await permissionService.getUserCapabilities(user.id)
-        const canCreateAnnouncements = capabilities.admin.systemSettings || user.role === 'administrador' || user.role === 'presidente'
-        if (!canCreateAnnouncements) {
+
+        // 🔐 Solo administradores pueden crear anuncios del sistema
+        if (user.role !== 'administrador') {
           return reply.status(403).send({
             success: false,
             error: 'Access denied',
-            details: 'You do not have permission to create system announcements'
+            details: 'Only administrators can create system announcements'
+          })
+        }
+
+        // 📋 Validar datos de entrada
+        const validationResult = createAnnouncementSchema.safeParse(request.body)
+        if (!validationResult.success) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Validation error',
+            details: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
           })
         }
 
         // 📢 Crear anuncio del sistema
-        const result = await notificationService.createSystemAnnouncement({
-          ...request.body,
-          createdBy: user.id
-        })
+        const result = await notificationService.createSystemAnnouncement(validationResult.data)
 
         return reply.status(201).send({
           success: true,
@@ -413,247 +344,6 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
       }
     }
   })
-
-  // 📧 POST /notifications/create/reminder - Crear recordatorio automático
-  fastify.route({
-    method: 'POST',
-    url: '/notifications/create/reminder',
-    preHandler: fastify.authenticate,
-    schema: {
-      body: {
-        type: 'object',
-        properties: {
-          title: { type: 'string', minLength: 1, maxLength: 200 },
-          content: { type: 'string', minLength: 1, maxLength: 1000 },
-          reminderAt: { type: 'string', format: 'date-time' },
-          repeatOptions: {
-            type: 'object',
-            properties: {
-              enabled: { type: 'boolean', default: false },
-              interval: { 
-                type: 'string', 
-                enum: ['daily', 'weekly', 'monthly'],
-                default: 'daily'
-              },
-              count: { type: 'number', minimum: 1, maximum: 100 },
-              endDate: { type: 'string', format: 'date-time' }
-            }
-          },
-          recipients: {
-            type: 'object',
-            properties: {
-              type: { 
-                type: 'string', 
-                enum: ['all', 'role', 'workspace', 'specific'] 
-              },
-              roles: { type: 'array', items: { type: 'string' } },
-              workspaces: { type: 'array', items: { type: 'string' } },
-              userIds: { type: 'array', items: { type: 'string', format: 'uuid' } }
-            },
-            required: ['type']
-          },
-          actionRequired: { type: 'boolean', default: false },
-          actionUrl: { type: 'string', format: 'uri' },
-          actionText: { type: 'string', maxLength: 50 }
-        },
-        required: ['title', 'content', 'reminderAt', 'recipients']
-      },
-      response: {
-        201: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                reminderId: { type: 'string' },
-                status: { type: 'string' },
-                nextExecution: { type: 'string' },
-                recipientCount: { type: 'number' },
-                repeatCount: { type: 'number' }
-              }
-            }
-          }
-        }
-      }
-    },
-
-    handler: async (request: FastifyRequest<{
-      Body: {
-        title: string
-        content: string
-        reminderAt: string
-        repeatOptions?: {
-          enabled?: boolean
-          interval?: string
-          count?: number
-          endDate?: string
-        }
-        recipients: {
-          type: string
-          roles?: string[]
-          workspaces?: string[]
-          userIds?: string[]
-        }
-        actionRequired?: boolean
-        actionUrl?: string
-        actionText?: string
-      }
-    }>, reply: FastifyReply) => {
-      try {
-        const user = (request as any).user
-        
-        // 🔐 Verificar permisos para crear recordatorios
-        const capabilities = await permissionService.getUserCapabilities(user.id)
-        const canCreateReminders = capabilities.admin.systemSettings || ['administrador', 'presidente', 'vicepresidente'].includes(user.role)
-        if (!canCreateReminders) {
-          return reply.status(403).send({
-            success: false,
-            error: 'Access denied',
-            details: 'You do not have permission to create reminders for the specified recipients'
-          })
-        }
-
-        // ⏰ Crear recordatorio
-        const result = await notificationService.createReminder({
-          ...request.body,
-          createdBy: user.id
-        })
-
-        return reply.status(201).send({
-          success: true,
-          message: 'Reminder created successfully',
-          data: result
-        })
-
-      } catch (error: any) {
-        console.error('❌ Create reminder error:', error)
-        
-        return reply.status(500).send({
-          success: false,
-          error: 'Internal server error',
-          details: 'Failed to create reminder'
-        })
-      }
-    }
-  })
-
-  // 📧 POST /notifications/create/template - Crear notificación desde plantilla
-  fastify.route({
-    method: 'POST',
-    url: '/notifications/create/template',
-    preHandler: fastify.authenticate,
-    schema: {
-      body: {
-        type: 'object',
-        properties: {
-          templateId: { type: 'string' },
-          variables: { type: 'object' },
-          recipients: {
-            type: 'object',
-            properties: {
-              type: { 
-                type: 'string', 
-                enum: ['all', 'role', 'workspace', 'specific'] 
-              },
-              roles: { type: 'array', items: { type: 'string' } },
-              workspaces: { type: 'array', items: { type: 'string' } },
-              userIds: { type: 'array', items: { type: 'string', format: 'uuid' } }
-            },
-            required: ['type']
-          },
-          priority: { 
-            type: 'string', 
-            enum: ['low', 'normal', 'high', 'urgent'],
-            default: 'normal'
-          },
-          delivery: {
-            type: 'object',
-            properties: {
-              immediate: { type: 'boolean', default: true },
-              email: { type: 'boolean', default: false },
-              browser: { type: 'boolean', default: true },
-              scheduledAt: { type: 'string', format: 'date-time' }
-            }
-          }
-        },
-        required: ['templateId', 'recipients']
-      },
-      response: {
-        201: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                notificationId: { type: 'string' },
-                templateUsed: { type: 'string' },
-                status: { type: 'string' },
-                recipientCount: { type: 'number' }
-              }
-            }
-          }
-        }
-      }
-    },
-
-    handler: async (request: FastifyRequest<{
-      Body: {
-        templateId: string
-        variables?: Record<string, any>
-        recipients: {
-          type: string
-          roles?: string[]
-          workspaces?: string[]
-          userIds?: string[]
-        }
-        priority?: string
-        delivery?: {
-          immediate?: boolean
-          email?: boolean
-          browser?: boolean
-          scheduledAt?: string
-        }
-      }
-    }>, reply: FastifyReply) => {
-      try {
-        const user = (request as any).user
-        
-        // 🔐 Verificar permisos para usar plantillas
-        const capabilities = await permissionService.getUserCapabilities(user.id)
-        const canUseTemplates = capabilities.admin.systemSettings || ['administrador', 'presidente', 'vicepresidente'].includes(user.role)
-        if (!canUseTemplates) {
-          return reply.status(403).send({
-            success: false,
-            error: 'Access denied',
-            details: 'You do not have permission to use notification templates'
-          })
-        }
-
-        // 📄 Crear notificación desde plantilla
-        const result = await notificationService.createFromTemplate({
-          ...request.body,
-          createdBy: user.id
-        })
-
-        return reply.status(201).send({
-          success: true,
-          message: 'Notification created from template successfully',
-          data: result
-        })
-
-      } catch (error: any) {
-        console.error('❌ Create notification from template error:', error)
-        
-        return reply.status(500).send({
-          success: false,
-          error: 'Internal server error',
-          details: 'Failed to create notification from template'
-        })
-      }
-    }
-  })
 }
+
+export default createNotificationRoute
