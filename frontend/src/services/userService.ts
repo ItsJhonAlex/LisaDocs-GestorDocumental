@@ -3,18 +3,6 @@ import type { User, UserRole, WorkspaceType } from '../types/auth';
 import type { UserActivity, ApiError, SyncResult } from '../types/api';
 
 // 🏷️ Tipos para las respuestas de API
-interface ApiUsersResponse {
-  users: User[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-interface ApiUserResponse {
-  user: User;
-}
-
 interface ApiPermissionsResponse {
   permissions: string[];
 }
@@ -25,6 +13,14 @@ interface ApiActivityResponse {
 
 interface ApiSearchResponse {
   users: User[];
+}
+
+// 🔐 Tipos para autenticación
+interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  tokenType: string;
 }
 
 // 🏷️ Tipos para la gestión de usuarios
@@ -96,14 +92,30 @@ export const userService = {
       if (filters.search) queryParams.append('search', filters.search);
       if (filters.isActive !== undefined) queryParams.append('isActive', filters.isActive.toString());
 
-      const response = await apiClient.get<ApiUsersResponse>(`/users?${queryParams.toString()}`);
+      const response = await apiClient.get(`/users?${queryParams.toString()}`);
+      
+      // 🔥 Ajustar a la estructura real del backend
+      const backendResponse = response.data as {
+        success: boolean;
+        data: {
+          users: User[];
+          pagination: {
+            total: number;
+            limit: number;
+            offset: number;
+            hasMore: boolean;
+          };
+        };
+      };
+      
+      const backendData = backendResponse.data;
       
       return {
-        users: response.data.users || [],
-        total: response.data.total || 0,
-        page: response.data.page || 1,
-        limit: response.data.limit || 10,
-        totalPages: response.data.totalPages || 0
+        users: backendData.users || [],
+        total: backendData.pagination?.total || 0,
+        page: Math.floor((backendData.pagination?.offset || 0) / (backendData.pagination?.limit || 10)) + 1,
+        limit: backendData.pagination?.limit || 10,
+        totalPages: Math.ceil((backendData.pagination?.total || 0) / (backendData.pagination?.limit || 10))
       };
     } catch (error) {
       console.error('Error loading users:', error);
@@ -116,8 +128,12 @@ export const userService = {
    */
   async getUserById(id: string): Promise<User> {
     try {
-      const response = await apiClient.get<ApiUserResponse>(`/users/${id}`);
-      return response.data.user;
+      const response = await apiClient.get(`/users/${id}`);
+      const backendResponse = response.data as {
+        success: boolean;
+        data: User;
+      };
+      return backendResponse.data;
     } catch (error) {
       console.error('Error loading user:', error);
       throw new Error('No se pudo cargar el usuario');
@@ -129,22 +145,58 @@ export const userService = {
    */
   async createUser(userData: CreateUserData): Promise<User> {
     try {
-      const response = await apiClient.post<ApiUserResponse>('/users', userData);
-      return response.data.user;
+      // 🔄 Transformar datos para coincidir con backend
+      const registerData = {
+        email: userData.email,
+        fullName: userData.fullName,
+        password: userData.password,
+        role: userData.role,
+        workspace: userData.workspace
+      };
+
+      // 🚀 Usar endpoint de registro (auth/register)
+      const response = await apiClient.post('/auth/register', registerData);
+      const backendResponse = response.data as {
+        success: boolean;
+        data: {
+          user: User;
+          tokens?: AuthTokens;
+        };
+      };
+      
+      // ✅ Devolver solo el usuario (sin tokens)
+      return backendResponse.data.user;
     } catch (error) {
       console.error('Error creating user:', error);
       
       const apiError = error as ApiError;
-      // Manejar errores específicos
+      // Manejar errores específicos del backend
       if (apiError.response?.status === 409) {
         throw new Error('El email ya está registrado en el sistema');
       } else if (apiError.response?.status === 403) {
         throw new Error('No tienes permisos para crear usuarios');
+      } else if (apiError.response?.status === 400) {
+        // Extraer mensaje de error detallado
+        const errorData = apiError.response.data as {
+          errors?: string[];
+          error?: {
+            details?: string;
+          };
+          message?: string;
+        };
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          throw new Error(`Datos inválidos: ${errorData.errors.join(', ')}`);
+        } else if (errorData.error?.details) {
+          throw new Error(`Password inválido: ${errorData.error.details}`);
+        } else if (errorData.message) {
+          throw new Error(errorData.message);
+        }
+        throw new Error('Datos de entrada inválidos');
       } else if (apiError.response?.data?.message) {
         throw new Error(apiError.response.data.message);
       }
       
-      throw new Error('No se pudo crear el usuario');
+      throw new Error('No se pudo crear el usuario. Verifica tu conexión e inténtalo de nuevo.');
     }
   },
 
@@ -153,8 +205,12 @@ export const userService = {
    */
   async updateUser(id: string, userData: UpdateUserData): Promise<User> {
     try {
-      const response = await apiClient.put<ApiUserResponse>(`/users/${id}`, userData);
-      return response.data.user;
+      const response = await apiClient.put(`/users/${id}`, userData);
+      const backendResponse = response.data as {
+        success: boolean;
+        data: User;
+      };
+      return backendResponse.data;
     } catch (error) {
       console.error('Error updating user:', error);
       
@@ -243,10 +299,32 @@ export const userService = {
    */
   async getStats(): Promise<UserStats> {
     try {
-      const response = await apiClient.get<UserStats>('/users/stats');
-      return response.data;
+      const response = await apiClient.get('/users/stats');
+      
+      // 🔥 Ajustar a la estructura real del backend
+      const backendResponse = response.data as {
+        success: boolean;
+        data: {
+          total: number;
+          active: number;
+          byRole: Record<string, number>;
+          byWorkspace: Record<string, number>;
+          recent: number;
+        };
+      };
+      
+      const stats = backendResponse.data;
+      
+      return {
+        totalUsers: stats.total || 0,
+        activeUsers: stats.active || 0,
+        inactiveUsers: (stats.total || 0) - (stats.active || 0),
+        usersByRole: stats.byRole || {},
+        usersByWorkspace: stats.byWorkspace || {},
+        recentUsers: [] // El backend solo devuelve el número, no los usuarios
+      };
     } catch (error) {
-      console.error('Error loading user stats:', error);
+      console.error('Error loading stats:', error);
       throw new Error('No se pudieron cargar las estadísticas');
     }
   },

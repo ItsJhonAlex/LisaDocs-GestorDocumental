@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { userService, type UserFilters, type CreateUserData, type UpdateUserData, type UserStats } from '../services/userService';
 import type { User } from '../types/auth';
 import type { ApiError } from '../types/api';
@@ -42,16 +42,29 @@ export const useUsers = (initialFilters: UserFilters = {}) => {
   // 🎣 Hook de autenticación
   const { user: currentUser } = useAuth();
 
+  // 📝 Ref para acceder a los filtros actuales sin dependencias
+  const filtersRef = useRef(filters);
+  
+  // Actualizar la ref cada vez que cambien los filtros
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
   /**
    * 📋 Cargar lista de usuarios
    */
-  const loadUsers = useCallback(async (newFilters?: UserFilters) => {
+  const loadUsers = useCallback(async (customFilters?: UserFilters) => {
+    console.log('🔄 LoadUsers llamado con filtros:', customFilters || filtersRef.current);
     setLoading(true);
     setError(null);
     
     try {
-      const appliedFilters = { ...filters, ...newFilters };
+      // Usar filtros personalizados o los actuales
+      const appliedFilters = customFilters || filtersRef.current;
+      console.log('📤 Enviando request con filtros:', appliedFilters);
+      
       const response = await userService.getUsers(appliedFilters);
+      console.log('📥 Respuesta del backend:', response);
       
       setUsers(response.users);
       setPagination({
@@ -61,11 +74,14 @@ export const useUsers = (initialFilters: UserFilters = {}) => {
         totalPages: response.totalPages
       });
       
-      // Actualizar filtros si se proporcionaron nuevos
-      if (newFilters) {
-        setFilters(appliedFilters);
+      console.log('✅ Usuarios cargados:', response.users.length);
+      
+      // Actualizar filtros si se proporcionaron personalizados
+      if (customFilters) {
+        setFilters(customFilters);
       }
     } catch (error) {
+      console.error('❌ Error cargando usuarios:', error);
       const apiError = error as ApiError;
       const errorMessage = apiError.message || 'Error al cargar usuarios';
       setError(errorMessage);
@@ -73,16 +89,19 @@ export const useUsers = (initialFilters: UserFilters = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, []); // 🔥 Sin dependencias para evitar recreación
 
   /**
    * 📊 Cargar estadísticas de usuarios
    */
   const loadStats = useCallback(async () => {
+    console.log('📊 LoadStats llamado');
     try {
       const statsData = await userService.getStats();
+      console.log('📊 Stats recibidas:', statsData);
       setStats(statsData);
     } catch (error) {
+      console.error('❌ Error cargando stats:', error);
       const apiError = error as ApiError;
       console.error('Error loading stats:', apiError);
       // No mostrar toast para stats, es secundario
@@ -280,23 +299,25 @@ export const useUsers = (initialFilters: UserFilters = {}) => {
    * 📄 Cambiar página
    */
   const changePage = useCallback((page: number) => {
-    const newFilters = { ...filters, offset: (page - 1) * pagination.limit };
+    const currentFilters = filtersRef.current;
+    const newFilters = { ...currentFilters, offset: (page - 1) * pagination.limit };
     loadUsers(newFilters);
-  }, [filters, pagination.limit, loadUsers]);
+  }, [loadUsers, pagination.limit]);
 
   /**
    * 🔧 Actualizar filtros
    */
   const updateFilters = useCallback((newFilters: Partial<UserFilters>) => {
-    const updatedFilters = { ...filters, ...newFilters, offset: 0 };
+    const currentFilters = filtersRef.current;
+    const updatedFilters = { ...currentFilters, ...newFilters, offset: 0 };
     loadUsers(updatedFilters);
-  }, [filters, loadUsers]);
+  }, [loadUsers]);
 
   /**
    * 🔄 Refrescar datos
    */
   const refresh = useCallback(() => {
-    loadUsers();
+    loadUsers(); // Usará filtersRef.current automáticamente
     loadStats();
   }, [loadUsers, loadStats]);
 
@@ -347,11 +368,23 @@ export const useUsers = (initialFilters: UserFilters = {}) => {
     return false;
   }, [currentUser]);
 
-  // 🚀 Efectos iniciales
+  // 🚀 Efecto inicial - solo se ejecuta una vez al montar
   useEffect(() => {
-    loadUsers();
-    loadStats();
-  }, [loadUsers, loadStats]);
+    let mounted = true;
+    
+    const initializeData = async () => {
+      if (mounted) {
+        await loadUsers(initialFilters);
+        await loadStats();
+      }
+    };
+    
+    initializeData();
+    
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return {
     // 📊 Estado

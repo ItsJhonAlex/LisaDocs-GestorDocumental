@@ -190,9 +190,9 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
   if (!canEdit) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
+        <DialogContent className="bg-background border shadow-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
+            <DialogTitle className="flex items-center gap-2 text-destructive font-semibold">
               <Shield className="h-5 w-5" />
               Sin Permisos de Edición
             </DialogTitle>
@@ -203,7 +203,11 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              className="bg-background border text-foreground hover:bg-accent"
+            >
               Cerrar
             </Button>
           </DialogFooter>
@@ -214,27 +218,27 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-background border shadow-lg">
+        <DialogHeader className="pb-4">
+          <DialogTitle className="flex items-center gap-2 text-foreground">
             <User className="h-5 w-5" />
             Editar Usuario
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-muted-foreground">
             Modifica la información del usuario {user.fullName}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 👤 Información Personal */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Información Personal</CardTitle>
+          <Card className="border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-card-foreground">Información Personal</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 bg-card">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Nombre Completo *</Label>
+                  <Label htmlFor="fullName" className="text-sm font-medium text-foreground">Nombre Completo *</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -243,16 +247,16 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
                       placeholder="Ej: Juan Pérez García"
                       value={formData.fullName}
                       onChange={(e) => updateField('fullName', e.target.value)}
-                      className={`pl-9 ${errors.fullName ? 'border-destructive' : ''}`}
+                      className={`pl-9 bg-background border text-foreground placeholder:text-muted-foreground ${errors.fullName ? 'border-destructive' : 'border-input'}`}
                     />
                   </div>
                   {errors.fullName && (
-                    <p className="text-sm text-destructive">{errors.fullName}</p>
+                    <p className="text-sm text-destructive font-medium">{errors.fullName}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
+                  <Label htmlFor="email" className="text-sm font-medium text-foreground">Email *</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -261,11 +265,11 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
                       placeholder="usuario@example.com"
                       value={formData.email}
                       onChange={(e) => updateField('email', e.target.value)}
-                      className={`pl-9 ${errors.email ? 'border-destructive' : ''}`}
+                      className={`pl-9 bg-background border text-foreground placeholder:text-muted-foreground ${errors.email ? 'border-destructive' : 'border-input'}`}
                     />
                   </div>
                   {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email}</p>
+                    <p className="text-sm text-destructive font-medium">{errors.email}</p>
                   )}
                 </div>
               </div>
@@ -273,14 +277,14 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
           </Card>
 
           {/* 🛡️ Permisos y Acceso */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Permisos y Acceso</CardTitle>
+          <Card className="border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-card-foreground">Permisos y Acceso</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 bg-card">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="role">Rol del Usuario *</Label>
+                  <Label htmlFor="role" className="text-sm font-medium text-foreground">Rol del Usuario *</Label>
                   <div className="relative">
                     <Shield className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Select
@@ -288,12 +292,16 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
                       onValueChange={(value) => updateField('role', value)}
                       disabled={!canChangeRole}
                     >
-                      <SelectTrigger className={`pl-9 ${errors.role ? 'border-destructive' : ''}`}>
+                      <SelectTrigger className={`pl-9 bg-background border text-foreground ${errors.role ? 'border-destructive' : 'border-input'}`}>
                         <SelectValue placeholder="Seleccionar rol" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-popover border shadow-lg">
                         {getAvailableRoles().map((role) => (
-                          <SelectItem key={role.value} value={role.value}>
+                          <SelectItem 
+                            key={role.value} 
+                            value={role.value}
+                            className="bg-popover hover:bg-accent text-popover-foreground"
+                          >
                             <div>
                               <div className="font-medium">{role.label}</div>
                               <div className="text-xs text-muted-foreground">{role.description}</div>
@@ -309,24 +317,28 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
                     </p>
                   )}
                   {errors.role && (
-                    <p className="text-sm text-destructive">{errors.role}</p>
+                    <p className="text-sm text-destructive font-medium">{errors.role}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="workspace">Workspace Principal *</Label>
+                  <Label htmlFor="workspace" className="text-sm font-medium text-foreground">Workspace Principal *</Label>
                   <div className="relative">
                     <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Select
                       value={formData.workspace}
                       onValueChange={(value) => updateField('workspace', value)}
                     >
-                      <SelectTrigger className={`pl-9 ${errors.workspace ? 'border-destructive' : ''}`}>
+                      <SelectTrigger className={`pl-9 bg-background border text-foreground ${errors.workspace ? 'border-destructive' : 'border-input'}`}>
                         <SelectValue placeholder="Seleccionar workspace" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-popover border shadow-lg">
                         {WORKSPACE_OPTIONS.map((workspace) => (
-                          <SelectItem key={workspace.value} value={workspace.value}>
+                          <SelectItem 
+                            key={workspace.value} 
+                            value={workspace.value}
+                            className="bg-popover hover:bg-accent text-popover-foreground"
+                          >
                             <div>
                               <div className="font-medium">{workspace.label}</div>
                               <div className="text-xs text-muted-foreground">{workspace.description}</div>
@@ -337,19 +349,19 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
                     </Select>
                   </div>
                   {errors.workspace && (
-                    <p className="text-sm text-destructive">{errors.workspace}</p>
+                    <p className="text-sm text-destructive font-medium">{errors.workspace}</p>
                   )}
                 </div>
               </div>
 
               {/* Estado del usuario */}
               <div className="space-y-3">
-                <Label>Estado del Usuario</Label>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
+                <Label className="text-sm font-medium text-foreground">Estado del Usuario</Label>
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
-                      <span className="font-medium">Cuenta Activa</span>
-                      <Badge variant={formData.isActive ? 'default' : 'secondary'}>
+                      <span className="font-medium text-foreground">Cuenta Activa</span>
+                      <Badge variant={formData.isActive ? 'default' : 'secondary'} className={formData.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
                         {formData.isActive ? 'Activo' : 'Inactivo'}
                       </Badge>
                     </div>
@@ -372,21 +384,21 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
                   </p>
                 )}
                 {errors.isActive && (
-                  <p className="text-sm text-destructive">{errors.isActive}</p>
+                  <p className="text-sm text-destructive font-medium">{errors.isActive}</p>
                 )}
               </div>
             </CardContent>
           </Card>
 
           {/* 📊 Información adicional */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Información del Sistema</CardTitle>
+          <Card className="border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-card-foreground">Información del Sistema</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 bg-card">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">Creado:</span>
+                  <span className="font-medium text-foreground">Creado:</span>
                   <p className="text-muted-foreground">
                     {new Date(user.createdAt).toLocaleDateString('es-ES', {
                       year: 'numeric',
@@ -398,7 +410,7 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
                   </p>
                 </div>
                 <div>
-                  <span className="font-medium">Último acceso:</span>
+                  <span className="font-medium text-foreground">Último acceso:</span>
                   <p className="text-muted-foreground">
                     {user.lastLoginAt 
                       ? new Date(user.lastLoginAt).toLocaleDateString('es-ES', {
@@ -416,12 +428,13 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
             </CardContent>
           </Card>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 pt-4 bg-background">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
+              className="bg-background border text-foreground hover:bg-accent"
             >
               <X className="h-4 w-4 mr-2" />
               Cancelar
@@ -429,6 +442,7 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
             <Button
               type="submit"
               disabled={!hasChanges || isLoading}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Save className="h-4 w-4 mr-2" />
               {isLoading ? 'Guardando...' : 'Guardar Cambios'}

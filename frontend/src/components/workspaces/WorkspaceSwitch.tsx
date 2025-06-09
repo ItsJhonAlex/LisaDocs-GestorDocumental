@@ -19,56 +19,56 @@ interface WorkspaceSwitchProps {
  * 
  * Muestra el dashboard correspondiente según:
  * - El workspace seleccionado
- * - Los permisos del usuario según su rol
- * - Control de acceso basado en la matriz de permisos del backend
+ * - Los permisos reales del usuario desde el backend
+ * - Control de acceso basado en la respuesta de /auth/profile
  */
 export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
-  const { user, hasAnyRole } = useAuth();
+  const { user, hasWorkspaceAccess, hasPermission } = useAuth();
 
-  // 🛡️ Verificar si el usuario tiene acceso al workspace
+  // 🛡️ Verificar si el usuario tiene acceso al workspace usando permisos del backend
   const canAccessWorkspace = (workspace: string): boolean => {
-    console.log('🔍 Debug WorkspaceSwitch:', {
+    console.log('🔍 Debug WorkspaceSwitch canAccessWorkspace:', {
       user,
       workspace,
       userRole: user?.role,
-      hasAnyRoleAdmin: hasAnyRole(['administrador']),
+      permissions: user?.permissions,
+      hasWorkspaceAccessResult: hasWorkspaceAccess(workspace),
+      hasViewPermission: hasPermission('view', workspace)
     });
     
-    if (!user) return false;
+    if (!user) {
+      console.log('❌ No user found');
+      return false;
+    }
 
-    // ✅ ADMINISTRADORES: Acceso total inmediato
-    if (user.role === 'administrador' || hasAnyRole(['administrador'])) {
-      console.log('✅ Admin access granted to workspace:', workspace);
+    // ✅ Administradores tienen acceso total siempre
+    if (user.role === 'administrador') {
+      console.log('✅ Admin access granted');
       return true;
     }
 
-    // 🎯 OTROS ROLES: Verificar acceso específico según workspace y rol
-    switch (workspace) {
-      case 'presidencia':
-        return hasAnyRole(['presidente', 'vicepresidente', 'secretario_cam', 'secretario_ampp', 'secretario_cf']);
-      
-      case 'cam':
-        return hasAnyRole(['presidente', 'secretario_cam']);
-      
-      case 'ampp':
-        return hasAnyRole(['presidente', 'vicepresidente', 'secretario_ampp']);
-      
-      case 'intendencia':
-        return hasAnyRole(['presidente', 'vicepresidente', 'intendente']);
-      
-      case 'comisiones_cf':
-        return hasAnyRole(['presidente', 'vicepresidente', 'secretario_cf', 'cf_member']);
-      
-      default:
-        // Para workspaces no reconocidos, denegar acceso
-        return false;
-    }
+    // ✅ Usar permisos reales del backend
+    const hasWorkspaceAccessCheck = hasWorkspaceAccess(workspace);
+    const hasViewPermissionCheck = hasPermission('view', workspace);
+    
+    const canAccess = hasWorkspaceAccessCheck || hasViewPermissionCheck;
+    
+    console.log('🔍 Final access check:', {
+      workspace,
+      hasWorkspaceAccessCheck,
+      hasViewPermissionCheck,
+      canAccess
+    });
+    
+    return canAccess;
   };
 
   // 🎯 Renderizar el dashboard correspondiente
   const renderWorkspaceDashboard = () => {
     // Verificar acceso antes de mostrar el dashboard
     if (!canAccessWorkspace(currentWorkspace)) {
+      const availableWorkspaces = user?.permissions?.canView || [];
+      
       return (
         <div className="space-y-6">
           <Alert variant="destructive">
@@ -76,7 +76,15 @@ export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
             <AlertDescription>
               No tienes permisos para acceder al workspace <strong>{currentWorkspace}</strong>.
               <br />
-              Contacta con un administrador si necesitas acceso.
+              {availableWorkspaces.length > 0 ? (
+                <>
+                  Espacios disponibles para ti: <strong>{availableWorkspaces.join(', ')}</strong>
+                  <br />
+                </>
+              ) : (
+                'No tienes acceso a ningún workspace configurado.'
+              )}
+              Contacta con un administrador si necesitas acceso adicional.
               <br />
               <small>Tu rol actual: <strong>{user?.role || 'Sin rol'}</strong></small>
             </AlertDescription>
@@ -102,18 +110,24 @@ export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
       case 'comisiones_cf':
         return <ComisionesDashboard />;
       
-      default:
+      default: {
+        const availableWorkspaces = user?.permissions?.canView || [];
         return (
           <div className="space-y-6">
             <Alert>
               <AlertDescription>
                 Workspace <strong>{currentWorkspace}</strong> no reconocido.
                 <br />
-                Espacios disponibles: CAM, AMPP, Presidencia, Intendencia, Comisiones CF.
+                {availableWorkspaces.length > 0 ? (
+                  <>Espacios disponibles: <strong>{availableWorkspaces.join(', ')}</strong></>
+                ) : (
+                  'No hay espacios de trabajo disponibles.'
+                )}
               </AlertDescription>
             </Alert>
           </div>
         );
+      }
     }
   };
 
@@ -183,6 +197,12 @@ export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
           ) : (
             <Badge variant="destructive">
               Sin Acceso
+            </Badge>
+          )}
+          {/* 🔍 Debug badge para desarrollo */}
+          {process.env.NODE_ENV === 'development' && (
+            <Badge variant="secondary" className="text-xs">
+              Permisos: {user?.permissions?.canView?.length || 0}
             </Badge>
           )}
         </div>

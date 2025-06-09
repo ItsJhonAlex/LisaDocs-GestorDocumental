@@ -150,49 +150,49 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background border shadow-lg">
+        <DialogHeader className="pb-4">
+          <DialogTitle className="flex items-center gap-3 text-foreground">
             <Avatar className="h-10 w-10">
-              <AvatarFallback className="text-sm font-semibold">
+              <AvatarFallback className="text-sm font-semibold bg-primary/10 text-primary">
                 {getInitials(user.fullName)}
               </AvatarFallback>
             </Avatar>
             <div>
-              <div>{user.fullName}</div>
+              <div className="text-foreground font-semibold">{user.fullName}</div>
               <div className="text-sm text-muted-foreground font-normal">{user.email}</div>
             </div>
           </DialogTitle>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Resumen</TabsTrigger>
-            <TabsTrigger value="permissions">Permisos</TabsTrigger>
-            <TabsTrigger value="activity">Actividad</TabsTrigger>
-            <TabsTrigger value="settings">Configuración</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4 bg-muted">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-background data-[state=active]:text-foreground">Resumen</TabsTrigger>
+            <TabsTrigger value="permissions" className="data-[state=active]:bg-background data-[state=active]:text-foreground">Permisos</TabsTrigger>
+            <TabsTrigger value="activity" className="data-[state=active]:bg-background data-[state=active]:text-foreground">Actividad</TabsTrigger>
+            <TabsTrigger value="settings" className="data-[state=active]:bg-background data-[state=active]:text-foreground">Configuración</TabsTrigger>
           </TabsList>
 
           {/* 📊 Tab Resumen */}
           <TabsContent value="overview" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Información Personal */}
-              <Card>
+              <Card className="border bg-card">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-card-foreground">
                     <User className="h-5 w-5" />
                     Información Personal
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 bg-card">
                   <div className="space-y-3">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Nombre Completo</label>
-                      <p className="text-sm">{user.fullName}</p>
+                      <p className="text-sm text-foreground font-medium">{user.fullName}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Email</label>
-                      <p className="text-sm">{user.email}</p>
+                      <p className="text-sm text-foreground font-medium">{user.email}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Estado</label>
@@ -202,7 +202,7 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
                         ) : (
                           <UserX className="h-4 w-4 text-red-600" />
                         )}
-                        <Badge variant={user.isActive ? 'default' : 'secondary'}>
+                        <Badge variant={user.isActive ? 'default' : 'secondary'} className={user.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
                           {user.isActive ? 'Activo' : 'Inactivo'}
                         </Badge>
                       </div>
@@ -212,14 +212,14 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
               </Card>
 
               {/* Rol y Workspace */}
-              <Card>
+              <Card className="border bg-card">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-card-foreground">
                     <Shield className="h-5 w-5" />
                     Rol y Workspace
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 bg-card">
                   <div className="space-y-3">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Rol</label>
@@ -232,7 +232,7 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Workspace Principal</label>
                       <div className="mt-1">
-                        <Badge variant="secondary">
+                        <Badge variant="secondary" className="bg-secondary/80 text-secondary-foreground">
                           {WORKSPACE_DISPLAY[user.workspace]?.label || user.workspace}
                         </Badge>
                       </div>
@@ -245,26 +245,26 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
               </Card>
 
               {/* Información del Sistema */}
-              <Card>
+              <Card className="border bg-card">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-card-foreground">
                     <Calendar className="h-5 w-5" />
                     Información del Sistema
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 bg-card">
                   <div className="space-y-3">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Fecha de Registro</label>
-                      <p className="text-sm">{formatDate(user.createdAt)}</p>
+                      <p className="text-sm text-foreground font-medium">{formatDate(user.createdAt)}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Última Actualización</label>
-                      <p className="text-sm">{formatDate(user.updatedAt)}</p>
+                      <p className="text-sm text-foreground font-medium">{formatDate(user.updatedAt)}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Último Acceso</label>
-                      <p className="text-sm">
+                      <p className="text-sm text-foreground font-medium">
                         {user.lastLoginAt ? (
                           <>
                             {formatDate(user.lastLoginAt)}
@@ -282,20 +282,20 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
               </Card>
 
               {/* Estadísticas Rápidas */}
-              <Card>
+              <Card className="border bg-card">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-card-foreground">
                     <Activity className="h-5 w-5" />
                     Estadísticas
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="bg-card">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 border rounded-lg">
+                    <div className="text-center p-3 border rounded-lg bg-muted/30">
                       <div className="text-2xl font-bold text-primary">--</div>
                       <div className="text-xs text-muted-foreground">Documentos</div>
                     </div>
-                    <div className="text-center p-3 border rounded-lg">
+                    <div className="text-center p-3 border rounded-lg bg-muted/30">
                       <div className="text-2xl font-bold text-green-600">--</div>
                       <div className="text-xs text-muted-foreground">Sesiones</div>
                     </div>
@@ -307,14 +307,14 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
 
           {/* 🛡️ Tab Permisos */}
           <TabsContent value="permissions" className="space-y-4">
-            <Card>
+            <Card className="border bg-card">
               <CardHeader>
-                <CardTitle>Permisos del Usuario</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-card-foreground">Permisos del Usuario</CardTitle>
+                <CardDescription className="text-muted-foreground">
                   Permisos asignados según el rol y configuración del usuario
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-card">
                 {loadingPermissions ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="text-muted-foreground">Cargando permisos...</div>
@@ -324,9 +324,9 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
                     {userPermissions.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {userPermissions.map((permission, index) => (
-                          <div key={index} className="flex items-center gap-2 p-2 border rounded">
+                          <div key={index} className="flex items-center gap-2 p-2 border rounded bg-muted/30">
                             <Shield className="h-4 w-4 text-primary" />
-                            <span className="text-sm">{permission}</span>
+                            <span className="text-sm text-foreground">{permission}</span>
                           </div>
                         ))}
                       </div>
@@ -344,14 +344,14 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
 
           {/* 📈 Tab Actividad */}
           <TabsContent value="activity" className="space-y-4">
-            <Card>
+            <Card className="border bg-card">
               <CardHeader>
-                <CardTitle>Historial de Actividad</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-card-foreground">Historial de Actividad</CardTitle>
+                <CardDescription className="text-muted-foreground">
                   Últimas acciones realizadas por el usuario
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-card">
                 {loadingActivity ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="text-muted-foreground">Cargando actividad...</div>
@@ -360,10 +360,10 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
                   <div className="space-y-4">
                     {userActivity.length > 0 ? (
                       userActivity.map((activity) => (
-                        <div key={activity.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                        <div key={activity.id} className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
                           <div className="h-2 w-2 bg-primary rounded-full mt-2 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">{activity.action}</p>
+                            <p className="text-sm font-medium text-foreground">{activity.action}</p>
                             <p className="text-xs text-muted-foreground">
                               {activity.description}
                             </p>
@@ -387,45 +387,45 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
 
           {/* ⚙️ Tab Configuración */}
           <TabsContent value="settings" className="space-y-4">
-            <Card>
+            <Card className="border bg-card">
               <CardHeader>
-                <CardTitle>Configuración de Cuenta</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-card-foreground">Configuración de Cuenta</CardTitle>
+                <CardDescription className="text-muted-foreground">
                   Configuraciones y preferencias del usuario
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 bg-card">
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
                     <div>
-                      <div className="font-medium">Email verificado</div>
+                      <div className="font-medium text-foreground">Email verificado</div>
                       <div className="text-sm text-muted-foreground">
                         Estado de verificación del email
                       </div>
                     </div>
-                    <Badge variant={user.emailVerified ? 'default' : 'secondary'}>
+                    <Badge variant={user.emailVerified ? 'default' : 'secondary'} className={user.emailVerified ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
                       {user.emailVerified ? 'Verificado' : 'Pendiente'}
                     </Badge>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
                     <div>
-                      <div className="font-medium">Autenticación 2FA</div>
+                      <div className="font-medium text-foreground">Autenticación 2FA</div>
                       <div className="text-sm text-muted-foreground">
                         Factor de autenticación adicional
                       </div>
                     </div>
-                    <Badge variant="secondary">Deshabilitado</Badge>
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-800">Deshabilitado</Badge>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
                     <div>
-                      <div className="font-medium">Notificaciones</div>
+                      <div className="font-medium text-foreground">Notificaciones</div>
                       <div className="text-sm text-muted-foreground">
                         Recibir notificaciones del sistema
                       </div>
                     </div>
-                    <Badge variant="default">Habilitado</Badge>
+                    <Badge variant="default" className="bg-green-100 text-green-800">Habilitado</Badge>
                   </div>
                 </div>
               </CardContent>
@@ -433,8 +433,12 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="gap-2 pt-4 bg-background">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            className="bg-background border text-foreground hover:bg-accent"
+          >
             <X className="h-4 w-4 mr-2" />
             Cerrar
           </Button>
@@ -445,6 +449,7 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
                 onOpenChange(false);
                 // Aquí podrías abrir el dialog de edición
               }}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Edit3 className="h-4 w-4 mr-2" />
               Editar Usuario
@@ -452,7 +457,10 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
           )}
           
           {canChangePassword(user) && (
-            <Button variant="outline">
+            <Button 
+              variant="outline"
+              className="bg-background border text-foreground hover:bg-accent"
+            >
               <Key className="h-4 w-4 mr-2" />
               Cambiar Contraseña
             </Button>

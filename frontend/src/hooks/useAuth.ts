@@ -11,6 +11,15 @@ interface User {
   workspace: string;
   isActive: boolean;
   lastLoginAt?: string;
+  preferences?: {
+    theme: string;
+  };
+  permissions?: {
+    canView: string[];
+    canDownload: string[];
+    canArchive: string[];
+    canManage: string[];
+  };
 }
 
 interface AuthTokens {
@@ -45,28 +54,68 @@ export function useAuth() {
     error: null
   });
 
+  // 🔄 Cargar perfil completo desde el backend
+  const loadUserProfile = async (accessToken: string) => {
+    try {
+      console.log('🔄 Cargando perfil desde backend...');
+      
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('🔍 Response status:', response.status);
+
+      if (!response.ok) {
+        console.error('❌ Response not ok:', response.status, response.statusText);
+        throw new Error('Error al obtener perfil del usuario');
+      }
+
+      const data = await response.json();
+      console.log('🔍 Raw response data:', data);
+      
+      if (data.success && data.data) {
+        console.log('✅ Perfil cargado desde backend:', data.data);
+        console.log('🔍 Permissions structure:', data.data.permissions);
+        return data.data; // Este incluye permisos completos
+      } else {
+        console.error('❌ Invalid response structure:', data);
+        throw new Error('Respuesta inválida del servidor');
+      }
+    } catch (error) {
+      console.error('❌ Error cargando perfil:', error);
+      throw error;
+    }
+  };
+
   // 🔄 Cargar usuario desde token almacenado
   useEffect(() => {
     const loadUser = async () => {
       try {
         const accessToken = localStorage.getItem('accessToken');
-        const userData = localStorage.getItem('userData');
         
         console.log('🔍 Debug loadUser:', {
-          hasAccessToken: !!accessToken,
-          hasUserData: !!userData
+          hasAccessToken: !!accessToken
         });
         
-        if (accessToken && userData) {
+        if (accessToken) {
           try {
-            const user = JSON.parse(userData);
+            // 🎯 Cargar perfil completo desde backend (incluye permisos)
+            const user = await loadUserProfile(accessToken);
+            
             const tokens = {
               accessToken,
               refreshToken: localStorage.getItem('refreshToken') || '',
               expiresIn: localStorage.getItem('expiresIn') || '24h'
             };
             
-            console.log('✅ Usuario cargado desde localStorage:', user);
+            // Actualizar localStorage con datos completos
+            localStorage.setItem('userData', JSON.stringify(user));
+            
+            console.log('✅ Usuario cargado con permisos:', user);
             
             setAuthState({
               user,
@@ -75,9 +124,9 @@ export function useAuth() {
               isAuthenticated: true,
               error: null
             });
-          } catch (parseError) {
-            console.error('❌ Error parsing stored user data:', parseError);
-            // Limpiar datos corruptos
+          } catch (profileError) {
+            console.error('❌ Error cargando perfil:', profileError);
+            // Token inválido o expirado, limpiar datos
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
             localStorage.removeItem('userData');
@@ -92,7 +141,7 @@ export function useAuth() {
             });
           }
         } else {
-          console.log('❌ No hay token o datos de usuario almacenados');
+          console.log('❌ No hay token almacenado');
           setAuthState({
             user: null,
             tokens: null,
@@ -122,31 +171,53 @@ export function useAuth() {
     return authState.user.role === role;
   };
 
-  // 🔍 Verificar si el usuario tiene acceso a un workspace
+  // 🔍 Verificar si el usuario tiene acceso a un workspace usando permisos del backend
   const hasWorkspaceAccess = (workspace: string): boolean => {
-    if (!authState.user) return false;
+    console.log('🔍 hasWorkspaceAccess called:', { workspace, user: authState.user });
     
-    // Los administradores tienen acceso a todos los workspaces
-    if (authState.user.role === 'administrador') return true;
-    
-    // Para otros roles, verificar el workspace específico o el workspace principal
-    const result = authState.user.workspace === workspace;
+    if (!authState.user) {
+      console.log('❌ hasWorkspaceAccess: No user');
+      return false;
+    }
     
     console.log('🔍 Debug hasWorkspaceAccess:', {
       workspace,
-      userWorkspace: authState.user?.workspace,
-      userRole: authState.user?.role,
-      result
+      userRole: authState.user.role,
+      permissions: authState.user.permissions,
+      userWorkspace: authState.user.workspace
     });
     
-    return result;
+    // Los administradores tienen acceso total
+    if (authState.user.role === 'administrador') {
+      console.log('✅ hasWorkspaceAccess: Admin access granted to workspace:', workspace);
+      return true;
+    }
+    
+    // Verificar permisos específicos del backend
+    if (authState.user.permissions?.canView) {
+      const hasAccess = authState.user.permissions.canView.includes(workspace);
+      console.log('🔍 hasWorkspaceAccess permission check result:', {
+        workspace,
+        canViewWorkspaces: authState.user.permissions.canView,
+        hasAccess
+      });
+      if (hasAccess) return true;
+    }
+    
+    // Fallback: verificar workspace principal
+    const fallbackAccess = authState.user.workspace === workspace;
+    console.log('🔍 hasWorkspaceAccess fallback workspace check:', {
+      userWorkspace: authState.user.workspace,
+      targetWorkspace: workspace,
+      fallbackAccess
+    });
+    return fallbackAccess;
   };
 
   // 🔍 Verificar si el usuario tiene uno de varios roles
   const hasAnyRole = (roles: string[]): boolean => {
     const result = authState.user ? roles.includes(authState.user.role) : false;
     console.log('🔍 Debug hasAnyRole:', {
-      authStateUser: authState.user,
       roles,
       userRole: authState.user?.role,
       result
@@ -164,63 +235,54 @@ export function useAuth() {
     return hasAnyRole(['administrador', 'presidente']);
   };
 
-  // 🔍 Verificar permisos específicos según rol
-  const hasPermission = (permission: string): boolean => {
-    if (!authState.user) return false;
-
-    const { role } = authState.user;
+  // 🛡️ Verificar permisos específicos usando datos del backend
+  const hasPermission = (action: 'view' | 'download' | 'archive' | 'manage', workspace?: string): boolean => {
+    console.log('🔍 hasPermission called:', { action, workspace, user: authState.user });
+    
+    if (!authState.user) {
+      console.log('❌ hasPermission: No user');
+      return false;
+    }
 
     // Administradores tienen todos los permisos
-    if (role === 'administrador') return true;
+    if (authState.user.role === 'administrador') {
+      console.log('✅ hasPermission: Admin access granted');
+      return true;
+    }
 
-    // Mapeo de permisos por rol
-    const rolePermissions: Record<string, string[]> = {
-      presidente: [
-        'view_all_documents',
-        'archive_documents',
-        'manage_presidencia',
-        'view_cam',
-        'view_ampp',
-        'view_intendencia'
-      ],
-      vicepresidente: [
-        'view_all_documents',
-        'view_cam',
-        'view_ampp',
-        'view_intendencia',
-        'manage_presidencia'
-      ],
-      secretario_cam: [
-        'view_cam',
-        'manage_cam',
-        'archive_cam_documents',
-        'view_presidencia'
-      ],
-      secretario_ampp: [
-        'view_ampp',
-        'manage_ampp',
-        'archive_ampp_documents',
-        'view_presidencia'
-      ],
-      secretario_cf: [
-        'view_comisiones_cf',
-        'manage_comisiones_cf',
-        'archive_cf_documents',
-        'view_presidencia'
-      ],
-      intendente: [
-        'view_intendencia',
-        'manage_intendencia',
-        'archive_intendencia_documents',
-        'view_presidencia'
-      ],
-      cf_member: [
-        'view_comisiones_cf'
-      ]
-    };
+    // Verificar permisos específicos del backend
+    if (!authState.user.permissions) {
+      console.log('❌ hasPermission: No permissions object');
+      return false;
+    }
 
-    const userPermissions = rolePermissions[role] || [];
-    return userPermissions.includes(permission);
+    const permissionKey = `can${action.charAt(0).toUpperCase() + action.slice(1)}` as keyof typeof authState.user.permissions;
+    const allowedWorkspaces = authState.user.permissions[permissionKey];
+
+    console.log('🔍 hasPermission details:', {
+      action,
+      workspace,
+      permissionKey,
+      allowedWorkspaces,
+      permissionsObject: authState.user.permissions
+    });
+
+    if (!allowedWorkspaces || !Array.isArray(allowedWorkspaces)) {
+      console.log('❌ hasPermission: Invalid allowedWorkspaces');
+      return false;
+    }
+
+    // Si no se especifica workspace, verificar si tiene al menos un permiso
+    if (!workspace) {
+      const result = allowedWorkspaces.length > 0;
+      console.log('🔍 hasPermission (no workspace):', result);
+      return result;
+    }
+
+    // Verificar workspace específico
+    const result = allowedWorkspaces.includes(workspace);
+    console.log('🔍 hasPermission result:', result);
+    return result;
   };
 
   // 📝 Función de login con backend real
@@ -249,23 +311,42 @@ export function useAuth() {
       if (data.success && data.data) {
         const { user, tokens } = data.data;
         
-        // Guardar en localStorage
+        // Guardar tokens
         localStorage.setItem('accessToken', tokens.accessToken);
         localStorage.setItem('refreshToken', tokens.refreshToken);
         localStorage.setItem('expiresIn', tokens.expiresIn);
-        localStorage.setItem('userData', JSON.stringify(user));
         
-        console.log('✅ Login exitoso:', user);
-        
-        setAuthState({
-          user,
-          tokens,
-          isLoading: false,
-          isAuthenticated: true,
-          error: null
-        });
-        
-        return { success: true };
+        try {
+          // 🎯 Cargar perfil completo con permisos
+          const fullUser = await loadUserProfile(tokens.accessToken);
+          
+          localStorage.setItem('userData', JSON.stringify(fullUser));
+          
+          console.log('✅ Login exitoso con permisos:', fullUser);
+          
+          setAuthState({
+            user: fullUser,
+            tokens,
+            isLoading: false,
+            isAuthenticated: true,
+            error: null
+          });
+          
+          return { success: true };
+        } catch (profileError) {
+          // Si falla la carga del perfil, usar datos básicos del login
+          localStorage.setItem('userData', JSON.stringify(user));
+          
+          setAuthState({
+            user,
+            tokens,
+            isLoading: false,
+            isAuthenticated: true,
+            error: null
+          });
+          
+          return { success: true };
+        }
       } else {
         const error = data.message || 'Error de autenticación';
         setAuthState(prev => ({ ...prev, isLoading: false, error }));

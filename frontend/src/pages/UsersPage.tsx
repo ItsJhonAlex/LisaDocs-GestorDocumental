@@ -17,7 +17,11 @@ export default function UsersPage() {
   
   // 🛡️ Verificación de permisos
   const canAccess = user?.role === 'administrador' || user?.role === 'presidente';
-  
+
+  // 🔍 Debug info
+  console.log('UsersPage - Current user:', user);
+  console.log('UsersPage - Can access:', canAccess);
+
   if (!canAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center">

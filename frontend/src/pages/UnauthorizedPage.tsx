@@ -31,9 +31,10 @@ export function UnauthorizedPage() {
               <span className="font-medium text-sm">Información de tu cuenta:</span>
             </div>
             <div className="text-sm text-muted-foreground space-y-1">
-              <p>• Usuario: {user.name} ({user.email})</p>
+              <p>• Usuario: {user.fullName} ({user.email})</p>
               <p>• Rol: {user.role?.replace('_', ' ')}</p>
-              <p>• Espacios: {user.workspaces?.join(', ') || 'Ninguno asignado'}</p>
+              <p>• Workspace Principal: {user.workspace || 'Ninguno asignado'}</p>
+              <p>• Espacios Disponibles: {user.permissions?.canView?.join(', ') || 'Ninguno'}</p>
             </div>
           </div>
         )}
@@ -76,20 +77,20 @@ export function UnauthorizedPage() {
             <Button variant="link" size="sm" asChild>
               <Link to="/profile">Mi Perfil</Link>
             </Button>
-            {user?.workspaces?.map(workspace => (
+            {user?.permissions?.canView?.map(workspace => (
               <Button key={workspace} variant="link" size="sm" asChild>
-                <Link to={`/workspaces/${workspace}`}>
-                  {workspace.replace('_', ' ')}
+                <Link to={`/workspaces/${workspace === 'comisiones_cf' ? 'comisiones' : workspace}`}>
+                  {workspace.replace('_', ' ').replace('comisiones cf', 'Comisiones CF')}
                 </Link>
               </Button>
-            ))}
+            )) || null}
           </div>
         </div>
 
         {/* 🚪 Opción de logout */}
         <div className="pt-4 border-t text-center">
           <p className="text-sm text-muted-foreground mb-2">
-            ¿No eres {user?.name}?
+            ¿No eres {user?.fullName}?
           </p>
           <Button variant="outline" size="sm" onClick={() => logout()}>
             Cambiar de cuenta

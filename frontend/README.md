@@ -52,3 +52,110 @@ export default tseslint.config({
   },
 })
 ```
+
+# Frontend LisaDocs 🎨
+
+## 🚀 Quick Start
+
+```bash
+# Instalar dependencias
+pnpm install
+
+# Ejecutar en desarrollo
+pnpm run dev
+
+# Build para producción
+pnpm run build
+```
+
+## 🔧 Testing Backend Connection
+
+Para verificar que la gestión de usuarios funciona correctamente:
+
+### 1. Verificar Backend
+
+```bash
+# El backend debe estar ejecutándose en http://localhost:8080
+# Desde la carpeta backend:
+npm run dev
+```
+
+### 2. Verificar Conexión API
+
+```bash
+# Probar endpoint de usuarios (requiere autenticación)
+curl -X GET http://localhost:8080/api/users \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Probar endpoint de salud
+curl -X GET http://localhost:8080/api/health
+```
+
+### 3. Verificar en el Frontend
+
+1. Ir a `/admin` o `/users` (solo administradores/presidentes)
+2. El sistema debe mostrar:
+   - ✅ "Sistema Operativo" si hay conexión
+   - ⚠️ "Backend Desconectado" si no hay conexión
+3. Los usuarios deben cargarse desde el backend
+4. Debe poder crear, editar y eliminar usuarios
+
+### 4. Funcionalidades de Gestión de Usuarios
+
+**Roles disponibles:**
+
+- `administrador` - Acceso total al sistema
+- `presidente` - Gestión ejecutiva principal
+- `vicepresidente` - Gestión ejecutiva secundaria
+- `secretario_cam` - Cámara de Comercio
+- `secretario_ampp` - Asociación de Municipios
+- `secretario_cf` - Comisiones de Fiscalización
+- `intendente` - Gestión territorial
+- `cf_member` - Miembro de comisiones
+
+**Workspaces disponibles:**
+
+- `presidencia` - Presidencia del Consejo
+- `intendencia` - Intendencia Regional
+- `cam` - Cámara de Comercio (CAM)
+- `ampp` - Asociación de Municipios (AMPP)
+- `comisiones_cf` - Comisiones de Fiscalización (CF1-CF8)
+
+## 🛡️ Permisos de Usuarios
+
+| Acción | Administrador | Presidente | Otros |
+|--------|--------------|------------|-------|
+| Ver usuarios | ✅ | ✅ | ❌ |
+| Crear usuarios | ✅ | ✅ (no admin) | ❌ |
+| Editar usuarios | ✅ | ✅ (no admin) | Solo su perfil |
+| Eliminar usuarios | ✅ | ✅ (no admin) | ❌ |
+| Cambiar contraseñas | ✅ | ✅ (no admin) | ❌ |
+| Ver estadísticas | ✅ | ✅ | ❌ |
+| Exportar datos | ✅ | ✅ | ❌ |
+
+## 🔗 API Endpoints Utilizados
+
+```typescript
+GET    /api/users              // Lista de usuarios con filtros
+POST   /api/users              // Crear nuevo usuario
+GET    /api/users/:id          // Obtener usuario por ID
+PUT    /api/users/:id          // Actualizar usuario
+DELETE /api/users/:id          // Eliminar usuario
+PATCH  /api/users/:id/password // Cambiar contraseña
+GET    /api/users/stats        // Estadísticas de usuarios
+GET    /api/users/export       // Exportar usuarios
+POST   /api/users/:id/resend-verification // Reenviar verificación
+```
+
+## 🎯 Componentes Principales
+
+- `AdminDashboard` - Dashboard principal de administración
+- `UserList` - Lista de usuarios con filtros y acciones
+- `CreateUserDialog` - Modal para crear usuarios
+- `EditUserDialog` - Modal para editar usuarios
+- `UserDetailsDialog` - Modal para ver detalles de usuario
+
+## 🔧 Hooks Utilizados
+
+- `useUsers` - Gestión completa de usuarios (CRUD, filtros, estadísticas)
+- `useAuth` - Autenticación y permisos de usuario

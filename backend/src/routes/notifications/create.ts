@@ -40,7 +40,7 @@ type AnnouncementData = z.infer<typeof createAnnouncementSchema>
 
 // 📧 Rutas para crear notificaciones
 export async function createNotificationRoute(fastify: FastifyInstance): Promise<void> {
-
+  
   // 📧 POST /notifications - Crear notificación individual
   fastify.post('/', {
     preHandler: fastify.authenticate,
@@ -108,7 +108,7 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
             details: 'User not authenticated'
           })
         }
-
+        
         // 🔐 Verificar permisos para crear notificaciones
         const capabilities = await permissionService.getUserCapabilities(user.id)
         const canCreateNotifications = capabilities.admin.systemSettings || 
@@ -267,14 +267,14 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
           targetWorkspaces: { 
             type: 'array', 
             items: { 
-              type: 'string',
+            type: 'string', 
               enum: ['cam', 'ampp', 'presidencia', 'intendencia', 'comisiones_cf']
             }
           },
           targetRoles: { 
             type: 'array', 
             items: { 
-              type: 'string',
+            type: 'string',
               enum: ['administrador', 'presidente', 'vicepresidente', 'secretario_cam', 'secretario_ampp', 'secretario_cf', 'intendente', 'cf_member']
             }
           },
@@ -304,7 +304,7 @@ export async function createNotificationRoute(fastify: FastifyInstance): Promise
     handler: async (request: FastifyRequest<{ Body: AnnouncementData }>, reply: FastifyReply) => {
       try {
         const user = (request as any).user
-
+        
         // 🔐 Solo administradores pueden crear anuncios del sistema
         if (user.role !== 'administrador') {
           return reply.status(403).send({

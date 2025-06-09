@@ -78,12 +78,13 @@ const WORKSPACE_OPTIONS: { value: WorkspaceType; label: string }[] = [
  * - Estados de carga optimizados
  */
 export function UserList() {
-  // 🎣 Hooks
+  // 🎣 Hooks - usar límite inicial más pequeño para pruebas
   const {
     users,
     loading,
     pagination,
     filters,
+    error,
     updateFilters,
     changePage,
     deleteUser,
@@ -93,7 +94,13 @@ export function UserList() {
     canChangePassword,
     refresh,
     exportUsers
-  } = useUsers();
+  } = useUsers({ limit: 10 }); // 🔥 Empezar con límite pequeño
+
+  // 🔍 Debug UserList
+  console.log('👥 UserList - Users:', users);
+  console.log('👥 UserList - Loading:', loading);
+  console.log('👥 UserList - Error:', error);
+  console.log('👥 UserList - Pagination:', pagination);
 
   // 🎯 Estado local
   const [searchQuery, setSearchQuery] = useState('');
@@ -163,13 +170,37 @@ export function UserList() {
 
   return (
     <div className="space-y-6">
+      {/* 🚨 Mostrar errores de conexión */}
+      {error && (
+        <Card className="border-destructive bg-destructive/5">
+          <CardHeader>
+            <CardTitle className="text-destructive font-semibold">Error de Conexión</CardTitle>
+            <CardDescription className="text-destructive/80">
+              No se pudo conectar con el servidor backend
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-destructive/90 mb-4 font-medium">{error}</p>
+            <Button 
+              variant="outline" 
+              onClick={refresh}
+              disabled={loading}
+              className="border-destructive text-destructive hover:bg-destructive/10"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Reintentar Conexión
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 🎛️ Barra de herramientas */}
-      <Card>
+      <Card className="border bg-card shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Gestión de Usuarios</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-card-foreground">Gestión de Usuarios</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 {pagination.total} usuarios registrados en el sistema
               </CardDescription>
             </div>
@@ -179,13 +210,17 @@ export function UserList() {
                 size="sm"
                 onClick={refresh}
                 disabled={loading}
+                className="bg-background border text-foreground hover:bg-accent"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Actualizar
               </Button>
               
               {canCreateUser() && (
-                <Button onClick={() => setShowCreateDialog(true)}>
+                <Button 
+                  onClick={() => setShowCreateDialog(true)}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
                   <UserPlus className="h-4 w-4 mr-2" />
                   Crear Usuario
                 </Button>
@@ -194,7 +229,7 @@ export function UserList() {
           </div>
         </CardHeader>
         
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 bg-card">
           {/* 🔍 Búsqueda y filtros */}
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
@@ -204,7 +239,7 @@ export function UserList() {
                   placeholder="Buscar usuarios por nombre o email..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 bg-background border text-foreground placeholder:text-muted-foreground"
                 />
               </div>
             </div>
@@ -214,6 +249,7 @@ export function UserList() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
+                className="bg-background border text-foreground hover:bg-accent"
               >
                 <Filter className="h-4 w-4 mr-2" />
                 Filtros
@@ -222,16 +258,26 @@ export function UserList() {
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="bg-background border text-foreground hover:bg-accent"
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Exportar
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => exportUsers('csv')}>
+                <DropdownMenuContent className="bg-popover border shadow-lg">
+                  <DropdownMenuItem 
+                    onClick={() => exportUsers('csv')}
+                    className="bg-popover hover:bg-accent text-popover-foreground cursor-pointer"
+                  >
                     Exportar como CSV
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => exportUsers('excel')}>
+                  <DropdownMenuItem 
+                    onClick={() => exportUsers('excel')}
+                    className="bg-popover hover:bg-accent text-popover-foreground cursor-pointer"
+                  >
                     Exportar como Excel
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -241,20 +287,26 @@ export function UserList() {
 
           {/* 📊 Panel de filtros expandible */}
           {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 border rounded-lg bg-muted/30">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 border rounded-lg bg-muted/30 border-border">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Rol</label>
+                <label className="text-sm font-medium text-foreground">Rol</label>
                 <Select
                   value={filters.role || 'all'}
                   onValueChange={(value) => handleFilterChange('role', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-background border text-foreground">
                     <SelectValue placeholder="Todos los roles" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los roles</SelectItem>
+                  <SelectContent className="bg-popover border shadow-lg">
+                    <SelectItem value="all" className="bg-popover hover:bg-accent text-popover-foreground">
+                      Todos los roles
+                    </SelectItem>
                     {ROLE_OPTIONS.map(role => (
-                      <SelectItem key={role.value} value={role.value}>
+                      <SelectItem 
+                        key={role.value} 
+                        value={role.value}
+                        className="bg-popover hover:bg-accent text-popover-foreground"
+                      >
                         {role.label}
                       </SelectItem>
                     ))}
@@ -263,18 +315,24 @@ export function UserList() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Workspace</label>
+                <label className="text-sm font-medium text-foreground">Workspace</label>
                 <Select
                   value={filters.workspace || 'all'}
                   onValueChange={(value) => handleFilterChange('workspace', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-background border text-foreground">
                     <SelectValue placeholder="Todos los workspaces" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los workspaces</SelectItem>
+                  <SelectContent className="bg-popover border shadow-lg">
+                    <SelectItem value="all" className="bg-popover hover:bg-accent text-popover-foreground">
+                      Todos los workspaces
+                    </SelectItem>
                     {WORKSPACE_OPTIONS.map(workspace => (
-                      <SelectItem key={workspace.value} value={workspace.value}>
+                      <SelectItem 
+                        key={workspace.value} 
+                        value={workspace.value}
+                        className="bg-popover hover:bg-accent text-popover-foreground"
+                      >
                         {workspace.label}
                       </SelectItem>
                     ))}
@@ -283,36 +341,42 @@ export function UserList() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Estado</label>
+                <label className="text-sm font-medium text-foreground">Estado</label>
                 <Select
                   value={filters.isActive === undefined ? 'all' : filters.isActive.toString()}
                   onValueChange={(value) => handleFilterChange('isActive', value === 'all' ? undefined : value === 'true')}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-background border text-foreground">
                     <SelectValue placeholder="Todos los estados" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="true">Activos</SelectItem>
-                    <SelectItem value="false">Inactivos</SelectItem>
+                  <SelectContent className="bg-popover border shadow-lg">
+                    <SelectItem value="all" className="bg-popover hover:bg-accent text-popover-foreground">
+                      Todos
+                    </SelectItem>
+                    <SelectItem value="true" className="bg-popover hover:bg-accent text-popover-foreground">
+                      Activos
+                    </SelectItem>
+                    <SelectItem value="false" className="bg-popover hover:bg-accent text-popover-foreground">
+                      Inactivos
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Elementos por página</label>
+                <label className="text-sm font-medium text-foreground">Elementos por página</label>
                 <Select
                   value={filters.limit?.toString() || '10'}
                   onValueChange={(value) => handleFilterChange('limit', parseInt(value))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-background border text-foreground">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
+                  <SelectContent className="bg-popover border shadow-lg">
+                    <SelectItem value="10" className="bg-popover hover:bg-accent text-popover-foreground">10</SelectItem>
+                    <SelectItem value="25" className="bg-popover hover:bg-accent text-popover-foreground">25</SelectItem>
+                    <SelectItem value="50" className="bg-popover hover:bg-accent text-popover-foreground">50</SelectItem>
+                    <SelectItem value="100" className="bg-popover hover:bg-accent text-popover-foreground">100</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -322,7 +386,7 @@ export function UserList() {
           {/* 🎯 Acciones por lotes */}
           {selectedUsers.length > 0 && (
             <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-lg">
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium text-foreground">
                 {selectedUsers.length} usuario(s) seleccionado(s)
               </span>
               <div className="ml-auto flex items-center gap-2">
@@ -330,6 +394,7 @@ export function UserList() {
                   variant="outline"
                   size="sm"
                   onClick={() => setSelectedUsers([])}
+                  className="bg-background border text-foreground hover:bg-accent"
                 >
                   Cancelar selección
                 </Button>
@@ -340,6 +405,7 @@ export function UserList() {
                     const user = users.find(u => u.id === id);
                     return user && canDeleteUser(user);
                   })}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   Eliminar seleccionados
                 </Button>
@@ -350,39 +416,42 @@ export function UserList() {
       </Card>
 
       {/* 📋 Tabla de usuarios */}
-      <Card>
-        <CardContent className="p-0">
+      <Card className="border bg-card shadow-sm">
+        <CardContent className="p-0 bg-card">
           <div className="relative">
             {loading && (
-              <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
-                <RefreshCw className="h-6 w-6 animate-spin" />
+              <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
+                <div className="flex items-center space-x-2 text-foreground">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
+                  <span className="font-medium">Cargando usuarios...</span>
+                </div>
               </div>
             )}
             
             <Table>
-              <TableHeader>
-                <TableRow>
+              <TableHeader className="bg-muted/50">
+                <TableRow className="border-b">
                   <TableHead className="w-12">
                     <Checkbox
                       checked={selectedUsers.length === users.length && users.length > 0}
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
-                  <TableHead>Usuario</TableHead>
-                  <TableHead>Rol</TableHead>
-                  <TableHead>Workspace</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Último acceso</TableHead>
-                  <TableHead className="w-20">Acciones</TableHead>
+                  <TableHead className="text-foreground font-semibold">Usuario</TableHead>
+                  <TableHead className="text-foreground font-semibold">Rol</TableHead>
+                  <TableHead className="text-foreground font-semibold">Workspace</TableHead>
+                  <TableHead className="text-foreground font-semibold">Estado</TableHead>
+                  <TableHead className="text-foreground font-semibold">Último acceso</TableHead>
+                  <TableHead className="w-20 text-foreground font-semibold">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody className="bg-background">
                 {users.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8">
                       <div className="flex flex-col items-center gap-2">
                         <UserX className="h-8 w-8 text-muted-foreground" />
-                        <p className="text-muted-foreground">
+                        <p className="text-muted-foreground font-medium">
                           {loading ? 'Cargando usuarios...' : 'No se encontraron usuarios'}
                         </p>
                       </div>
@@ -390,7 +459,7 @@ export function UserList() {
                   </TableRow>
                 ) : (
                   users.map((user) => (
-                    <TableRow key={user.id}>
+                    <TableRow key={user.id} className="border-b hover:bg-muted/30 transition-colors">
                       <TableCell>
                         <Checkbox
                           checked={selectedUsers.includes(user.id)}
@@ -401,12 +470,12 @@ export function UserList() {
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback className="text-xs">
+                            <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
                               {getInitials(user.fullName)}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="font-medium">{user.fullName}</div>
+                            <div className="font-medium text-foreground">{user.fullName}</div>
                             <div className="text-sm text-muted-foreground">{user.email}</div>
                           </div>
                         </div>
@@ -417,7 +486,7 @@ export function UserList() {
                       </TableCell>
                       
                       <TableCell>
-                        <Badge variant="secondary">
+                        <Badge variant="secondary" className="bg-secondary/80 text-secondary-foreground">
                           {WORKSPACE_OPTIONS.find(w => w.value === user.workspace)?.label || user.workspace}
                         </Badge>
                       </TableCell>
@@ -429,21 +498,21 @@ export function UserList() {
                           ) : (
                             <UserX className="h-4 w-4 text-red-600" />
                           )}
-                          <Badge variant={user.isActive ? 'default' : 'secondary'}>
+                          <Badge variant={user.isActive ? 'default' : 'secondary'} className={user.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
                             {user.isActive ? 'Activo' : 'Inactivo'}
                           </Badge>
                         </div>
                       </TableCell>
                       
                       <TableCell>
-                        <div className="text-sm">
+                        <div className="text-sm text-foreground">
                           {user.lastLoginAt ? (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger>
                                   {new Date(user.lastLoginAt).toLocaleDateString('es-ES')}
                                 </TooltipTrigger>
-                                <TooltipContent>
+                                <TooltipContent className="bg-popover border text-popover-foreground">
                                   {new Date(user.lastLoginAt).toLocaleString('es-ES')}
                                 </TooltipContent>
                               </Tooltip>
@@ -457,58 +526,66 @@ export function UserList() {
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-accent">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setViewingUser(user)}>
+                          <DropdownMenuContent align="end" className="bg-popover border shadow-lg">
+                            <DropdownMenuItem 
+                              onClick={() => setViewingUser(user)}
+                              className="bg-popover hover:bg-accent text-popover-foreground cursor-pointer"
+                            >
                               <Eye className="h-4 w-4 mr-2" />
                               Ver detalles
                             </DropdownMenuItem>
                             
                             {canEditUser(user) && (
-                              <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                              <DropdownMenuItem 
+                                onClick={() => setEditingUser(user)}
+                                className="bg-popover hover:bg-accent text-popover-foreground cursor-pointer"
+                              >
                                 <Edit3 className="h-4 w-4 mr-2" />
                                 Editar
                               </DropdownMenuItem>
                             )}
                             
                             {canChangePassword(user) && (
-                              <DropdownMenuItem>
+                              <DropdownMenuItem className="bg-popover hover:bg-accent text-popover-foreground cursor-pointer">
                                 <Key className="h-4 w-4 mr-2" />
                                 Cambiar contraseña
                               </DropdownMenuItem>
                             )}
                             
-                            <DropdownMenuItem>
+                            <DropdownMenuItem className="bg-popover hover:bg-accent text-popover-foreground cursor-pointer">
                               <Mail className="h-4 w-4 mr-2" />
                               Reenviar verificación
                             </DropdownMenuItem>
                             
                             {canDeleteUser(user) && (
                               <>
-                                <DropdownMenuSeparator />
+                                <DropdownMenuSeparator className="bg-border" />
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <DropdownMenuItem 
-                                      className="text-destructive focus:text-destructive"
+                                      className="text-destructive focus:text-destructive hover:bg-destructive/10 cursor-pointer"
                                       onSelect={(e) => e.preventDefault()}
                                     >
                                       <Trash2 className="h-4 w-4 mr-2" />
                                       Eliminar usuario
                                     </DropdownMenuItem>
                                   </AlertDialogTrigger>
-                                  <AlertDialogContent>
+                                  <AlertDialogContent className="bg-background border shadow-lg">
                                     <AlertDialogHeader>
-                                      <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Esta acción eliminará permanentemente al usuario <strong>{user.fullName}</strong> 
+                                      <AlertDialogTitle className="text-foreground">¿Eliminar usuario?</AlertDialogTitle>
+                                      <AlertDialogDescription className="text-muted-foreground">
+                                        Esta acción eliminará permanentemente al usuario <strong className="text-foreground">{user.fullName}</strong> 
                                         y todos sus datos asociados. Esta acción no se puede deshacer.
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogCancel className="bg-background border text-foreground hover:bg-accent">
+                                        Cancelar
+                                      </AlertDialogCancel>
                                       <AlertDialogAction
                                         onClick={() => handleDeleteUser(user)}
                                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -534,8 +611,8 @@ export function UserList() {
 
       {/* 📄 Paginación */}
       {totalPages > 1 && (
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
+        <Card className="border bg-card shadow-sm">
+          <CardContent className="flex items-center justify-between p-4 bg-card">
             <div className="text-sm text-muted-foreground">
               Mostrando {startItem} - {endItem} de {pagination.total} usuarios
             </div>
@@ -546,6 +623,7 @@ export function UserList() {
                 size="sm"
                 onClick={() => changePage(currentPage - 1)}
                 disabled={currentPage <= 1}
+                className="bg-background border text-foreground hover:bg-accent disabled:opacity-50"
               >
                 <ChevronLeft className="h-4 w-4" />
                 Anterior
@@ -562,7 +640,11 @@ export function UserList() {
                       variant={page === currentPage ? "default" : "outline"}
                       size="sm"
                       onClick={() => changePage(page)}
-                      className="w-8 h-8 p-0"
+                      className={`w-8 h-8 p-0 ${
+                        page === currentPage 
+                          ? "bg-primary text-primary-foreground" 
+                          : "bg-background border text-foreground hover:bg-accent"
+                      }`}
                     >
                       {page}
                     </Button>
@@ -575,6 +657,7 @@ export function UserList() {
                 size="sm"
                 onClick={() => changePage(currentPage + 1)}
                 disabled={currentPage >= totalPages}
+                className="bg-background border text-foreground hover:bg-accent disabled:opacity-50"
               >
                 Siguiente
                 <ChevronRight className="h-4 w-4" />

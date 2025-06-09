@@ -160,7 +160,7 @@ const mockComisionesStats: ComisionesStats = {
  * - Control de acceso según permisos de miembros CF
  */
 export function ComisionesDashboard() {
-  const { user, hasAnyRole } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [documents, setDocuments] = useState<Document[]>(mockComisionesDocuments);
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>(mockComisionesDocuments);
   const [stats] = useState<ComisionesStats>(mockComisionesStats);
@@ -172,18 +172,23 @@ export function ComisionesDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('all');
 
-  // 🎯 Permisos específicos para Comisiones CF
-  const canUpload = hasAnyRole(['administrador', 'presidente', 'vicepresidente', 'secretario_cf', 'cf_member']);
-  const canArchiveOthers = hasAnyRole(['administrador', 'presidente', 'secretario_cf']);
-  const canManage = hasAnyRole(['administrador', 'secretario_cf']);
+  // 🎯 Permisos específicos para Comisiones CF usando datos del backend
+  const isAdmin = user?.role === 'administrador';
+  const canUpload = isAdmin || hasPermission('manage', 'comisiones_cf') || hasPermission('view', 'comisiones_cf');
+  const canArchiveOthers = isAdmin || hasPermission('archive', 'comisiones_cf');
+  const canManage = isAdmin || hasPermission('manage', 'comisiones_cf');
 
   // ✅ Debug para verificar permisos
   console.log('🔍 Comisiones CF Permissions Debug:', {
     userRole: user?.role,
+    permissions: user?.permissions,
+    isAdmin,
     canUpload,
     canArchiveOthers,
     canManage,
-    hasAdminRole: hasAnyRole(['administrador'])
+    hasViewComisiones: hasPermission('view', 'comisiones_cf'),
+    hasManageComisiones: hasPermission('manage', 'comisiones_cf'),
+    hasArchiveComisiones: hasPermission('archive', 'comisiones_cf')
   });
 
   // 🔄 Cargar documentos del workspace Comisiones CF

@@ -64,17 +64,23 @@ export function AdminDashboard() {
     stats, 
     loadStats, 
     exportUsers,
-    canCreateUser 
-  } = useUsers({ limit: 50 });
+    canCreateUser,
+    loading,
+    error,
+    pagination
+  } = useUsers({ limit: 10 }); // 🔥 Empezar con límite pequeño
 
   // 🎯 Estado local
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('users');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // 🔄 Cargar estadísticas al montar
   useEffect(() => {
-    loadStats();
+    // Solo cargar stats, el hook useUsers ya maneja la carga inicial de usuarios
+    loadStats().catch(error => {
+      console.error('Error loading stats:', error);
+    });
   }, [loadStats]);
 
   // 🔄 Refrescar datos
@@ -89,28 +95,39 @@ export function AdminDashboard() {
 
   // 📊 Calcular estadísticas locales si no tenemos stats del servidor
   const localStats = React.useMemo(() => {
-    if (stats) return stats;
+    if (stats) {
+      // 🛡️ Asegurar que stats tenga objetos válidos
+      return {
+        ...stats,
+        usersByRole: stats.usersByRole || {},
+        usersByWorkspace: stats.usersByWorkspace || {},
+        recentUsers: stats.recentUsers || []
+      };
+    }
 
-    const usersByRole = users.reduce((acc, user) => {
+    // 🛡️ Asegurar que users sea un array válido
+    const safeUsers = Array.isArray(users) ? users : [];
+
+    const usersByRole = safeUsers.reduce((acc, user) => {
       acc[user.role] = (acc[user.role] || 0) + 1;
       return acc;
     }, {} as Record<UserRole, number>);
 
-    const usersByWorkspace = users.reduce((acc, user) => {
+    const usersByWorkspace = safeUsers.reduce((acc, user) => {
       acc[user.workspace] = (acc[user.workspace] || 0) + 1;
       return acc;
     }, {} as Record<WorkspaceType, number>);
 
-    const activeUsers = users.filter(u => u.isActive).length;
-    const inactiveUsers = users.filter(u => !u.isActive).length;
+    const activeUsers = safeUsers.filter(u => u.isActive).length;
+    const inactiveUsers = safeUsers.filter(u => !u.isActive).length;
 
     return {
-      totalUsers: users.length,
+      totalUsers: safeUsers.length,
       activeUsers,
       inactiveUsers,
-      usersByRole,
-      usersByWorkspace,
-      recentUsers: users.slice(0, 5)
+      usersByRole, // 🔥 Siempre será un objeto válido
+      usersByWorkspace, // 🔥 Siempre será un objeto válido
+      recentUsers: safeUsers.slice(0, 5) // 🔥 Esto siempre será un array ahora
     };
   }, [users, stats]);
 
@@ -161,36 +178,107 @@ export function AdminDashboard() {
     data: Record<string, number>;
     colors: Record<string, string>;
     total: number;
-  }) => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">{title}</CardTitle>
-        <CardDescription>Distribución actual en el sistema</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {Object.entries(data)
-          .sort(([,a], [,b]) => b - a)
-          .map(([key, count]) => {
-            const percentage = total > 0 ? (count / total) * 100 : 0;
+  }) => {
+    // 🛡️ Asegurar que data sea un objeto válido
+    const safeData = data && typeof data === 'object' ? data : {};
+    
     return (
-              <div key={key} className="space-y-1">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-3 h-3 rounded-full ${colors[key] || 'bg-gray-400'}`} />
-                    <span className="capitalize">{key.replace('_', ' ')}</span>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">{title}</CardTitle>
+          <CardDescription>Distribución actual en el sistema</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Object.entries(safeData)
+            .sort(([,a], [,b]) => b - a)
+            .map(([key, count]) => {
+              const percentage = total > 0 ? (count / total) * 100 : 0;
+              return (
+                <div key={key} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-3 h-3 rounded-full ${colors[key] || 'bg-gray-400'}`} />
+                      <span className="capitalize">{key.replace('_', ' ')}</span>
+                    </div>
+                    <span className="font-medium">{count}</span>
                   </div>
-                  <span className="font-medium">{count}</span>
+                  <Progress value={percentage} className="h-2" />
+                </div>
+              );
+            })}
+          {Object.keys(safeData).length === 0 && (
+            <div className="text-center py-4 text-muted-foreground">
+              <p>No hay datos disponibles</p>
             </div>
-                <Progress value={percentage} className="h-2" />
-      </div>
+          )}
+        </CardContent>
+      </Card>
     );
-          })}
-      </CardContent>
-    </Card>
-  );
+  };
+
+  // 🔍 Debug info
+  console.log('AdminDashboard - Loading:', loading);
+  console.log('AdminDashboard - Users count:', users?.length || 0);
+  console.log('AdminDashboard - Error:', error);
 
   return (
     <div className="space-y-6">
+      {/* 🔍 Debug Status */}
+      <Card className="bg-muted/50">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between text-sm">
+            <span>Estado del Sistema:</span>
+            <div className="flex items-center gap-4">
+              <Badge variant={loading ? "secondary" : "default"}>
+                {loading ? "🔄 Cargando..." : "✅ Listo"}
+              </Badge>
+              <Badge variant="outline">
+                {users?.length || 0} usuarios
+              </Badge>
+              {error && (
+                <Badge variant="destructive">
+                  ❌ Error de conexión
+                </Badge>
+              )}
+            </div>
+          </div>
+          
+          {/* 🔍 Debug Raw Data */}
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm font-medium">🔧 Debug Data (click para expandir)</summary>
+            <div className="mt-2 p-2 bg-background rounded border text-xs font-mono">
+              <div><strong>Users Array:</strong> {JSON.stringify(users, null, 2)}</div>
+              <div className="mt-2"><strong>Stats:</strong> {JSON.stringify(stats, null, 2)}</div>
+              <div className="mt-2"><strong>Pagination:</strong> {JSON.stringify(pagination, null, 2)}</div>
+              <div className="mt-2"><strong>Error:</strong> {error || 'null'}</div>
+            </div>
+          </details>
+        </CardContent>
+      </Card>
+
+      {/* 🚨 Mostrar errores si los hay */}
+      {error && (
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle className="text-destructive">Error de Conexión</CardTitle>
+            <CardDescription>
+              No se pudo conectar con el servidor. Verifica que el backend esté ejecutándose en http://localhost:8080
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            <Button 
+              variant="outline" 
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Reintentar Conexión
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 🎯 Header del Dashboard de Gestión de Usuarios */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -202,15 +290,19 @@ export function AdminDashboard() {
             <div className="flex items-center gap-3">
           <Button
             onClick={() => setShowCreateDialog(true)}
+            disabled={!!error || loading}
             className="h-20"
           >
             <Plus className="w-4 h-4 mr-2" />
                 Crear Usuario
               </Button>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  Sistema Operativo
-                </Badge>
+            <Badge 
+              variant="outline" 
+              className={error ? "bg-red-50 text-red-700 border-red-200" : "bg-green-50 text-green-700 border-green-200"}
+            >
+              {error ? "⚠️ Backend Desconectado" : "✅ Sistema Operativo"}
+                  </Badge>
               </div>
             </div>
           </div>
@@ -242,7 +334,7 @@ export function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total de Usuarios"
-          value={localStats.totalUsers}
+          value={loading ? '⏳' : localStats.totalUsers}
           description="Registrados en el sistema"
           icon={Users}
           trend={{ value: 12, isPositive: true }}
@@ -250,7 +342,7 @@ export function AdminDashboard() {
         
         <StatCard
           title="Usuarios Activos"
-          value={localStats.activeUsers}
+          value={loading ? '⏳' : localStats.activeUsers}
           description="Con acceso habilitado"
           icon={UserCheck}
           color="text-green-600"
@@ -259,7 +351,7 @@ export function AdminDashboard() {
         
         <StatCard
           title="Usuarios Inactivos"
-          value={localStats.inactiveUsers}
+          value={loading ? '⏳' : localStats.inactiveUsers}
           description="Con acceso suspendido"
           icon={UserX}
           color="text-red-600"
@@ -267,7 +359,7 @@ export function AdminDashboard() {
         
         <StatCard
           title="Tasa de Actividad"
-          value={`${localStats.totalUsers > 0 ? Math.round((localStats.activeUsers / localStats.totalUsers) * 100) : 0}%`}
+          value={loading ? '⏳' : `${localStats.totalUsers > 0 ? Math.round((localStats.activeUsers / localStats.totalUsers) * 100) : 0}%`}
           description="Usuarios activos vs total"
           icon={Activity}
           color="text-blue-600"
@@ -368,9 +460,9 @@ export function AdminDashboard() {
               <CardDescription>Últimos usuarios registrados en el sistema</CardDescription>
             </CardHeader>
             <CardContent>
-              {localStats.recentUsers.length > 0 ? (
+              {(users && users.length > 0) ? (
                 <div className="space-y-3">
-                  {localStats.recentUsers.map((user) => (
+                  {users.slice(0, 5).map((user) => (
                     <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center space-x-3">
                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -395,7 +487,7 @@ export function AdminDashboard() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="h-8 w-8 mx-auto mb-2" />
-                  <p>No hay usuarios recientes</p>
+                  <p>No hay usuarios registrados</p>
                 </div>
               )}
             </CardContent>

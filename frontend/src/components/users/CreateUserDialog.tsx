@@ -228,27 +228,27 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-background border shadow-lg">
+        <DialogHeader className="pb-4">
+          <DialogTitle className="flex items-center gap-2 text-foreground">
             <User className="h-5 w-5" />
             Crear Nuevo Usuario
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-muted-foreground">
             Complete la información para crear un nuevo usuario en el sistema LisaDocs.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 👤 Información Personal */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Información Personal</CardTitle>
+          <Card className="border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-card-foreground">Información Personal</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 bg-card">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Nombre Completo *</Label>
+                  <Label htmlFor="fullName" className="text-sm font-medium text-foreground">Nombre Completo *</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -257,16 +257,16 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                       placeholder="Ej: Juan Pérez García"
                       value={formData.fullName}
                       onChange={(e) => updateField('fullName', e.target.value)}
-                      className={`pl-9 ${errors.fullName ? 'border-destructive' : ''}`}
+                      className={`pl-9 bg-background border text-foreground placeholder:text-muted-foreground ${errors.fullName ? 'border-destructive' : 'border-input'}`}
                     />
                   </div>
                   {errors.fullName && (
-                    <p className="text-sm text-destructive">{errors.fullName}</p>
+                    <p className="text-sm text-destructive font-medium">{errors.fullName}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
+                  <Label htmlFor="email" className="text-sm font-medium text-foreground">Email *</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -275,11 +275,11 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                       placeholder="usuario@example.com"
                       value={formData.email}
                       onChange={(e) => updateField('email', e.target.value)}
-                      className={`pl-9 ${errors.email ? 'border-destructive' : ''}`}
+                      className={`pl-9 bg-background border text-foreground placeholder:text-muted-foreground ${errors.email ? 'border-destructive' : 'border-input'}`}
                     />
                   </div>
                   {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email}</p>
+                    <p className="text-sm text-destructive font-medium">{errors.email}</p>
                   )}
                 </div>
               </div>
@@ -287,24 +287,25 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
           </Card>
 
           {/* 🔐 Configuración de Contraseña */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center justify-between">
+          <Card className="border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center justify-between text-card-foreground">
                 Configuración de Contraseña
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={generateSecurePassword}
+                  className="bg-background border text-foreground hover:bg-accent"
                 >
                   Generar Segura
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 bg-card">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="password">Contraseña *</Label>
+                  <Label htmlFor="password" className="text-sm font-medium text-foreground">Contraseña *</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -313,25 +314,25 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                       placeholder="Mínimo 8 caracteres"
                       value={formData.password}
                       onChange={(e) => updateField('password', e.target.value)}
-                      className={`pl-9 pr-9 ${errors.password ? 'border-destructive' : ''}`}
+                      className={`pl-9 pr-9 bg-background border text-foreground placeholder:text-muted-foreground ${errors.password ? 'border-destructive' : 'border-input'}`}
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
+                      className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                   </div>
                   {errors.password && (
-                    <p className="text-sm text-destructive">{errors.password}</p>
+                    <p className="text-sm text-destructive font-medium">{errors.password}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
+                  <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">Confirmar Contraseña *</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -340,48 +341,48 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                       placeholder="Repetir contraseña"
                       value={formData.confirmPassword}
                       onChange={(e) => updateField('confirmPassword', e.target.value)}
-                      className={`pl-9 pr-9 ${errors.confirmPassword ? 'border-destructive' : ''}`}
+                      className={`pl-9 pr-9 bg-background border text-foreground placeholder:text-muted-foreground ${errors.confirmPassword ? 'border-destructive' : 'border-input'}`}
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
+                      className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
                       {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                   </div>
                   {errors.confirmPassword && (
-                    <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+                    <p className="text-sm text-destructive font-medium">{errors.confirmPassword}</p>
                   )}
                 </div>
               </div>
 
               {/* Indicador de fortaleza de contraseña */}
               {passwordAnalysis && (
-                <div className="space-y-2">
+                <div className="space-y-2 p-3 bg-muted/50 rounded-lg border">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Fortaleza de la contraseña</span>
+                    <span className="text-sm font-medium text-foreground">Fortaleza de la contraseña</span>
                     <Badge variant={passwordAnalysis.score >= 4 ? 'default' : passwordAnalysis.score >= 3 ? 'secondary' : 'destructive'}>
                       {passwordAnalysis.strength}
                     </Badge>
                   </div>
                   <Progress value={passwordAnalysis.percentage} className="h-2" />
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <span className={passwordAnalysis.checks.length ? 'text-green-600' : 'text-muted-foreground'}>
+                    <span className={passwordAnalysis.checks.length ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
                       ✓ Mínimo 8 caracteres
                     </span>
-                    <span className={passwordAnalysis.checks.uppercase ? 'text-green-600' : 'text-muted-foreground'}>
+                    <span className={passwordAnalysis.checks.uppercase ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
                       ✓ Mayúsculas
                     </span>
-                    <span className={passwordAnalysis.checks.lowercase ? 'text-green-600' : 'text-muted-foreground'}>
+                    <span className={passwordAnalysis.checks.lowercase ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
                       ✓ Minúsculas
                     </span>
-                    <span className={passwordAnalysis.checks.numbers ? 'text-green-600' : 'text-muted-foreground'}>
+                    <span className={passwordAnalysis.checks.numbers ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
                       ✓ Números
                     </span>
-                    <span className={passwordAnalysis.checks.symbols ? 'text-green-600' : 'text-muted-foreground'}>
+                    <span className={passwordAnalysis.checks.symbols ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
                       ✓ Símbolos
                     </span>
                   </div>
@@ -391,26 +392,26 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
           </Card>
 
           {/* 🛡️ Permisos y Acceso */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Permisos y Acceso</CardTitle>
+          <Card className="border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-card-foreground">Permisos y Acceso</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 bg-card">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="role">Rol del Usuario *</Label>
+                  <Label htmlFor="role" className="text-sm font-medium text-foreground">Rol del Usuario *</Label>
                   <div className="relative">
                     <Shield className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Select
                       value={formData.role}
                       onValueChange={(value) => updateField('role', value)}
                     >
-                      <SelectTrigger className={`pl-9 ${errors.role ? 'border-destructive' : ''}`}>
+                      <SelectTrigger className={`pl-9 bg-background border text-foreground ${errors.role ? 'border-destructive' : 'border-input'}`}>
                         <SelectValue placeholder="Seleccionar rol" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-popover border shadow-lg">
                         {getAvailableRoles().map((role) => (
-                          <SelectItem key={role.value} value={role.value}>
+                          <SelectItem key={role.value} value={role.value} className="bg-popover hover:bg-accent text-popover-foreground">
                             <div>
                               <div className="font-medium">{role.label}</div>
                               <div className="text-xs text-muted-foreground">{role.description}</div>
@@ -421,24 +422,24 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                     </Select>
                   </div>
                   {errors.role && (
-                    <p className="text-sm text-destructive">{errors.role}</p>
+                    <p className="text-sm text-destructive font-medium">{errors.role}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="workspace">Workspace Principal *</Label>
+                  <Label htmlFor="workspace" className="text-sm font-medium text-foreground">Workspace Principal *</Label>
                   <div className="relative">
                     <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Select
                       value={formData.workspace}
                       onValueChange={(value) => updateField('workspace', value)}
                     >
-                      <SelectTrigger className={`pl-9 ${errors.workspace ? 'border-destructive' : ''}`}>
+                      <SelectTrigger className={`pl-9 bg-background border text-foreground ${errors.workspace ? 'border-destructive' : 'border-input'}`}>
                         <SelectValue placeholder="Seleccionar workspace" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-popover border shadow-lg">
                         {WORKSPACE_OPTIONS.map((workspace) => (
-                          <SelectItem key={workspace.value} value={workspace.value}>
+                          <SelectItem key={workspace.value} value={workspace.value} className="bg-popover hover:bg-accent text-popover-foreground">
                             <div>
                               <div className="font-medium">{workspace.label}</div>
                               <div className="text-xs text-muted-foreground">{workspace.description}</div>
@@ -449,25 +450,27 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                     </Select>
                   </div>
                   {errors.workspace && (
-                    <p className="text-sm text-destructive">{errors.workspace}</p>
+                    <p className="text-sm text-destructive font-medium">{errors.workspace}</p>
                   )}
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <DialogFooter>
+          <DialogFooter className="pt-4 bg-background">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={actionLoading.create}
+              className="bg-background border text-foreground hover:bg-accent"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={actionLoading.create}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {actionLoading.create ? 'Creando...' : 'Crear Usuario'}
             </Button>

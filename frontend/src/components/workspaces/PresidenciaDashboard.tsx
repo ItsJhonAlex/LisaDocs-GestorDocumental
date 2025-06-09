@@ -160,7 +160,7 @@ const mockPresidenciaStats: PresidenciaStats = {
  * - Estadísticas de uso y actividad
  */
 export function PresidenciaDashboard() {
-  const { user, hasAnyRole } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [documents, setDocuments] = useState<Document[]>(mockPresidenciaDocuments);
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>(mockPresidenciaDocuments);
   const [stats] = useState<PresidenciaStats>(mockPresidenciaStats);
@@ -172,18 +172,23 @@ export function PresidenciaDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('all');
 
-  // 🎯 Permisos específicos para Presidencia
-  const canUpload = hasAnyRole(['administrador', 'presidente', 'vicepresidente', 'secretario_cam', 'secretario_ampp', 'secretario_cf']);
-  const canArchiveOthers = hasAnyRole(['administrador', 'presidente']);
-  const canManage = hasAnyRole(['administrador', 'presidente']);
+  // 🎯 Permisos específicos para Presidencia usando datos del backend
+  const isAdmin = user?.role === 'administrador';
+  const canUpload = isAdmin || hasPermission('manage', 'presidencia') || hasPermission('view', 'presidencia');
+  const canArchiveOthers = isAdmin || hasPermission('archive', 'presidencia');
+  const canManage = isAdmin || hasPermission('manage', 'presidencia');
 
   // ✅ Debug para verificar permisos
   console.log('🔍 Presidencia Permissions Debug:', {
     userRole: user?.role,
+    permissions: user?.permissions,
+    isAdmin,
     canUpload,
     canArchiveOthers,
     canManage,
-    hasAdminRole: hasAnyRole(['administrador'])
+    hasViewPresidencia: hasPermission('view', 'presidencia'),
+    hasManagePresidencia: hasPermission('manage', 'presidencia'),
+    hasArchivePresidencia: hasPermission('archive', 'presidencia')
   });
 
   // 🔄 Cargar documentos del workspace Presidencia

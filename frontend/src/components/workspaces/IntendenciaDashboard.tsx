@@ -160,7 +160,7 @@ const mockIntendenciaStats: IntendenciaStats = {
  * - Control de acceso según permisos de intendente
  */
 export function IntendenciaDashboard() {
-  const { user, hasAnyRole } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [documents, setDocuments] = useState<Document[]>(mockIntendenciaDocuments);
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>(mockIntendenciaDocuments);
   const [stats] = useState<IntendenciaStats>(mockIntendenciaStats);
@@ -172,18 +172,23 @@ export function IntendenciaDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('all');
 
-  // 🎯 Permisos específicos para Intendencia
-  const canUpload = hasAnyRole(['administrador', 'presidente', 'vicepresidente', 'intendente']);
-  const canArchiveOthers = hasAnyRole(['administrador', 'presidente', 'intendente']);
-  const canManage = hasAnyRole(['administrador', 'intendente']);
+  // 🎯 Permisos específicos para Intendencia usando datos del backend
+  const isAdmin = user?.role === 'administrador';
+  const canUpload = isAdmin || hasPermission('manage', 'intendencia') || hasPermission('view', 'intendencia');
+  const canArchiveOthers = isAdmin || hasPermission('archive', 'intendencia');
+  const canManage = isAdmin || hasPermission('manage', 'intendencia');
 
   // ✅ Debug para verificar permisos
   console.log('🔍 Intendencia Permissions Debug:', {
     userRole: user?.role,
+    permissions: user?.permissions,
+    isAdmin,
     canUpload,
     canArchiveOthers,
     canManage,
-    hasAdminRole: hasAnyRole(['administrador'])
+    hasViewIntendencia: hasPermission('view', 'intendencia'),
+    hasManageIntendencia: hasPermission('manage', 'intendencia'),
+    hasArchiveIntendencia: hasPermission('archive', 'intendencia')
   });
 
   // 🔄 Cargar documentos del workspace Intendencia

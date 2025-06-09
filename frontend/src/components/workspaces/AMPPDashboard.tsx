@@ -160,7 +160,7 @@ const mockAMPPStats: AMPPStats = {
  * - Control de acceso según permisos de secretario AMPP
  */
 export function AMPPDashboard() {
-  const { user, hasAnyRole } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [documents, setDocuments] = useState<Document[]>(mockAMPPDocuments);
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>(mockAMPPDocuments);
   const [stats] = useState<AMPPStats>(mockAMPPStats);
@@ -172,18 +172,23 @@ export function AMPPDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('all');
 
-  // 🎯 Permisos específicos para AMPP
-  const canUpload = hasAnyRole(['administrador', 'presidente', 'vicepresidente', 'secretario_ampp']);
-  const canArchiveOthers = hasAnyRole(['administrador', 'presidente', 'secretario_ampp']);
-  const canManage = hasAnyRole(['administrador', 'secretario_ampp']);
+  // 🎯 Permisos específicos para AMPP usando datos del backend
+  const isAdmin = user?.role === 'administrador';
+  const canUpload = isAdmin || hasPermission('manage', 'ampp') || hasPermission('view', 'ampp');
+  const canArchiveOthers = isAdmin || hasPermission('archive', 'ampp');
+  const canManage = isAdmin || hasPermission('manage', 'ampp');
 
   // ✅ Debug para verificar permisos
   console.log('🔍 AMPP Permissions Debug:', {
     userRole: user?.role,
+    permissions: user?.permissions,
+    isAdmin,
     canUpload,
     canArchiveOthers,
     canManage,
-    hasAdminRole: hasAnyRole(['administrador'])
+    hasViewAMPP: hasPermission('view', 'ampp'),
+    hasManageAMPP: hasPermission('manage', 'ampp'),
+    hasArchiveAMPP: hasPermission('archive', 'ampp')
   });
 
   // 🔄 Cargar documentos del workspace AMPP

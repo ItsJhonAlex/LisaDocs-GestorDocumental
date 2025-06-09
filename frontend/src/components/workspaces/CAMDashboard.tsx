@@ -160,7 +160,7 @@ const mockCAMStats: CAMStats = {
  * - Control de acceso según permisos de secretario CAM
  */
 export function CAMDashboard() {
-  const { user, hasAnyRole } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [documents, setDocuments] = useState<Document[]>(mockCAMDocuments);
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>(mockCAMDocuments);
   const [stats] = useState<CAMStats>(mockCAMStats);
@@ -172,18 +172,23 @@ export function CAMDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('all');
 
-  // 🎯 Permisos específicos para CAM
-  const canUpload = hasAnyRole(['administrador', 'presidente', 'secretario_cam']);
-  const canArchiveOthers = hasAnyRole(['administrador', 'presidente', 'secretario_cam']);
-  const canManage = hasAnyRole(['administrador', 'secretario_cam']);
+  // 🎯 Permisos específicos para CAM usando datos del backend
+  const isAdmin = user?.role === 'administrador';
+  const canUpload = isAdmin || hasPermission('manage', 'cam') || hasPermission('view', 'cam');
+  const canArchiveOthers = isAdmin || hasPermission('archive', 'cam');
+  const canManage = isAdmin || hasPermission('manage', 'cam');
 
   // ✅ Debug para verificar permisos
   console.log('🔍 CAM Permissions Debug:', {
     userRole: user?.role,
+    permissions: user?.permissions,
+    isAdmin,
     canUpload,
     canArchiveOthers,
     canManage,
-    hasAdminRole: hasAnyRole(['administrador'])
+    hasViewCAM: hasPermission('view', 'cam'),
+    hasManageCAM: hasPermission('manage', 'cam'),
+    hasArchiveCAM: hasPermission('archive', 'cam')
   });
 
   // 🔄 Cargar documentos del workspace CAM
