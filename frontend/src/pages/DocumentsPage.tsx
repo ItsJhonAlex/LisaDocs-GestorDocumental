@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   FileText, 
   Plus, 
@@ -25,115 +25,15 @@ import {
   DocumentList,
   DocumentUpload,
   DocumentViewer,
-  DocumentFilters,
-  DocumentStatusStats,
-  type DocumentFiltersType
+  DocumentStatusStats
 } from '@/components/documents';
 
+// 🪝 Importar nuestro hook personalizado
+import { useDocuments } from '@/hooks/useDocuments';
 import { useAuth } from '@/hooks/useAuth';
 
-// 🎯 Tipos para el dashboard
-interface Document {
-  id: string;
-  title: string;
-  description?: string;
-  fileName: string;
-  fileSize: number;
-  mimeType: string;
-  status: 'draft' | 'stored' | 'archived';
-  workspace: string;
-  tags?: string[];
-  createdBy: string;
-  createdByName?: string;
-  createdAt: string;
-  storedAt?: string;
-  archivedAt?: string;
-  fileUrl: string;
-}
-
-// 📊 Mock data - en producción vendría del backend
-const mockDocuments: Document[] = [
-  {
-    id: '1',
-    title: 'Acta Reunión CAM - Enero 2024',
-    description: 'Acta de la reunión ordinaria del Consejo de Administración Municipal',
-    fileName: 'acta-cam-enero-2024.pdf',
-    fileSize: 2048576, // 2MB
-    mimeType: 'application/pdf',
-    status: 'stored',
-    workspace: 'presidencia',
-    tags: ['acta', 'reunión', 'ordinaria'],
-    createdBy: 'current-user',
-    createdByName: 'Jonathan Rodriguez',
-    createdAt: '2024-01-15T10:30:00Z',
-    storedAt: '2024-01-15T11:00:00Z',
-    fileUrl: '/uploads/cam/acta-cam-enero-2024.pdf'
-  },
-  {
-    id: '2',
-    title: 'Informe Presupuestario Q4 2023',
-    description: 'Informe detallado del cierre presupuestario del cuarto trimestre',
-    fileName: 'informe-presupuesto-q4-2023.xlsx',
-    fileSize: 1536000, // 1.5MB
-    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    status: 'stored',
-    workspace: 'presidencia',
-    tags: ['informe', 'presupuesto', 'financiero'],
-    createdBy: 'current-user',
-    createdByName: 'Jonathan Rodriguez',
-    createdAt: '2024-01-10T14:20:00Z',
-    storedAt: '2024-01-10T15:00:00Z',
-    fileUrl: '/uploads/presidencia/informe-presupuesto-q4-2023.xlsx'
-  },
-  {
-    id: '3',
-    title: 'Borrador - Propuesta Nueva Ordenanza',
-    description: 'Borrador de propuesta para nueva ordenanza municipal',
-    fileName: 'borrador-ordenanza-2024.docx',
-    fileSize: 512000, // 500KB
-    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    status: 'draft',
-    workspace: 'presidencia',
-    tags: ['borrador', 'ordenanza', 'propuesta'],
-    createdBy: 'current-user',
-    createdByName: 'Jonathan Rodriguez',
-    createdAt: '2024-01-20T09:15:00Z',
-    fileUrl: '/uploads/presidencia/borrador-ordenanza-2024.docx'
-  },
-  {
-    id: '4',
-    title: 'Resolución Municipal 001-2024',
-    description: 'Resolución sobre nuevas políticas administrativas',
-    fileName: 'resolucion-001-2024.pdf',
-    fileSize: 1024000, // 1MB
-    mimeType: 'application/pdf',
-    status: 'stored',
-    workspace: 'presidencia',
-    tags: ['resolución', 'políticas', 'administración'],
-    createdBy: 'current-user',
-    createdByName: 'Jonathan Rodriguez',
-    createdAt: '2024-01-18T16:30:00Z',
-    storedAt: '2024-01-18T17:00:00Z',
-    fileUrl: '/uploads/presidencia/resolucion-001-2024.pdf'
-  },
-  {
-    id: '5',
-    title: 'Acta Asamblea General Diciembre 2023',
-    description: 'Acta de la asamblea general de fin de año',
-    fileName: 'acta-asamblea-dic-2023.pdf',
-    fileSize: 3072000, // 3MB
-    mimeType: 'application/pdf',
-    status: 'archived',
-    workspace: 'presidencia',
-    tags: ['acta', 'asamblea', 'general'],
-    createdBy: 'current-user',
-    createdByName: 'Jonathan Rodriguez',
-    createdAt: '2023-12-20T14:20:00Z',
-    storedAt: '2023-12-20T15:00:00Z',
-    archivedAt: '2024-01-15T10:00:00Z',
-    fileUrl: '/uploads/presidencia/acta-asamblea-dic-2023.pdf'
-  }
-];
+// 🎯 Importar tipos
+import type { Document, UploadFile } from '@/types/document';
 
 /**
  * 📄 Página principal de gestión de documentos
@@ -146,120 +46,59 @@ const mockDocuments: Document[] = [
  */
 export function DocumentsPage() {
   const { user } = useAuth();
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments);
-  const [filteredDocuments, setFilteredDocuments] = useState<Document[]>(mockDocuments);
-  const [filters, setFilters] = useState<DocumentFiltersType>({});
+  
+  // 🪝 Usar nuestro hook personalizado
+  const {
+    documents,
+    filters,
+    error,
+    stats,
+    isLoading,
+    currentPage,
+    totalPages,
+    uploadDocument,
+    uploadMultipleDocuments,
+    deleteDocument,
+    archiveDocument,
+    restoreDocument,
+    downloadDocument,
+    updateFilters,
+    changePage
+  } = useDocuments({ autoLoad: true });
+
+  // 🎯 Estado local para UI
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('all');
 
-  // 🎯 Datos específicos del usuario
-  const userName = user?.name || 'Usuario';
+  // 🎯 Datos del usuario con fallbacks seguros
   const userRole = user?.role || 'usuario';
 
-  // 🔄 Cargar documentos - en producción sería una llamada al API
-  useEffect(() => {
-    const loadDocuments = async () => {
-      setIsLoading(true);
-      try {
-        // Simular llamada API con delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // 🎯 SOLO mostrar documentos del usuario logueado
-        // Los documentos de workspaces se verán en sus secciones específicas
-        const userDocuments = mockDocuments.filter(doc => {
-          return doc.createdBy === 'current-user';
-        });
-        
-        console.log('📄 Documentos del usuario:', userDocuments);
-        console.log('👤 Usuario actual:', user?.name);
-        
-        setDocuments(userDocuments);
-        setFilteredDocuments(userDocuments);
-      } catch (error) {
-        console.error('Error loading documents:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    // Solo cargar documentos si tenemos usuario
-    if (user) {
-      loadDocuments();
+  // 🔍 Documentos filtrados por tab
+  const getFilteredDocuments = () => {
+    switch (activeTab) {
+      case 'drafts':
+        return documents.filter(doc => doc.status === 'draft');
+      case 'archived':
+        return documents.filter(doc => doc.status === 'archived');
+      case 'stored':
+        return documents.filter(doc => doc.status === 'stored');
+      default:
+        return documents;
     }
-  }, [user]); // Incluir user en dependencias
+  };
 
-  // 🔍 Aplicar filtros
-  useEffect(() => {
-    let filtered = [...documents];
-
-    // Filtro por tab activo
-    if (activeTab === 'own') {
-      filtered = filtered.filter(doc => doc.createdBy === 'current-user');
-    } else if (activeTab === 'drafts') {
-      filtered = filtered.filter(doc => doc.status === 'draft');
-    } else if (activeTab === 'archived') {
-      filtered = filtered.filter(doc => doc.status === 'archived');
-    }
-
-    // Aplicar filtros adicionales
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      filtered = filtered.filter(doc => 
-        doc.title.toLowerCase().includes(searchTerm) ||
-        doc.description?.toLowerCase().includes(searchTerm) ||
-        doc.fileName.toLowerCase().includes(searchTerm)
-      );
-    }
-
-    if (filters.status?.length) {
-      filtered = filtered.filter(doc => filters.status!.includes(doc.status));
-    }
-
-    if (filters.workspace?.length) {
-      filtered = filtered.filter(doc => filters.workspace!.includes(doc.workspace));
-    }
-
-    setFilteredDocuments(filtered);
-    setCurrentPage(1); // Reset pagination
-  }, [documents, filters, activeTab]);
+  const filteredDocuments = getFilteredDocuments();
 
   // 🎯 Gestores de eventos
-  const handleUpload = async (files: Array<{
-    file: File;
-    title: string;
-    description?: string;
-    workspace: string;
-    tags?: string[];
-  }>) => {
+  const handleUpload = async (files: UploadFile[]) => {
     try {
-      // Simular upload al backend
-      console.log('Uploading files:', files);
-      
-      // En producción: llamada al API
-      // const uploadedDocs = await uploadDocuments(files);
-      
-      // Mock: agregar documentos subidos
-      const newDocs: Document[] = files.map((fileData, index) => ({
-        id: `new-${Date.now()}-${index}`,
-        title: fileData.title,
-        description: fileData.description,
-        fileName: fileData.file.name,
-        fileSize: fileData.file.size,
-        mimeType: fileData.file.type,
-        status: 'draft' as const,
-        workspace: fileData.workspace,
-        tags: fileData.tags || [],
-        createdBy: 'current-user',
-        createdByName: userName,
-        createdAt: new Date().toISOString(),
-        fileUrl: `/uploads/${fileData.workspace}/${fileData.file.name}`
-      }));
-
-      setDocuments(prev => [...newDocs, ...prev]);
+      if (files.length === 1) {
+        await uploadDocument(files[0]);
+      } else {
+        await uploadMultipleDocuments(files);
+      }
       setIsUploadOpen(false);
     } catch (error) {
       console.error('Error uploading files:', error);
@@ -274,65 +113,45 @@ export function DocumentsPage() {
     }
   };
 
-  const handleDownload = (documentId: string) => {
-    const doc = documents.find(d => d.id === documentId);
-    if (doc) {
-      // En producción: llamada al API para download
-      console.log('Downloading document:', doc.fileName);
-      // Simular descarga
-      const link = document.createElement('a');
-      link.href = doc.fileUrl;
-      link.download = doc.fileName;
-      link.click();
-    }
+  const handleDownload = async (documentId: string) => {
+    await downloadDocument(documentId);
   };
 
   const handleArchive = async (documentId: string) => {
-    try {
-      // En producción: llamada al API
-      setDocuments(prev => prev.map(doc => 
-        doc.id === documentId 
-          ? { ...doc, status: 'archived' as const, archivedAt: new Date().toISOString() }
-          : doc
-      ));
-    } catch (error) {
-      console.error('Error archiving document:', error);
-    }
+    await archiveDocument(documentId);
   };
 
   const handleRestore = async (documentId: string) => {
-    try {
-      // En producción: llamada al API
-      setDocuments(prev => prev.map(doc => 
-        doc.id === documentId 
-          ? { ...doc, status: 'stored' as const, archivedAt: undefined }
-          : doc
-      ));
-    } catch (error) {
-      console.error('Error restoring document:', error);
-    }
+    await restoreDocument(documentId);
   };
 
   const handleDelete = async (documentId: string) => {
     if (confirm('¿Estás seguro de que quieres eliminar este documento? Esta acción no se puede deshacer.')) {
-      try {
-        // En producción: llamada al API
-        setDocuments(prev => prev.filter(doc => doc.id !== documentId));
-      } catch (error) {
-        console.error('Error deleting document:', error);
-      }
+      await deleteDocument(documentId);
     }
   };
 
   const handleEdit = (documentId: string) => {
     console.log('Edit document:', documentId);
-    // Implementar navegación a página de edición
+    // TODO: Implementar navegación a página de edición
   };
 
   const handleShare = (documentId: string) => {
     console.log('Share document:', documentId);
-    // Implementar funcionalidad de compartir
+    // TODO: Implementar funcionalidad de compartir
   };
+
+  // 📊 Calcular estadísticas del tab actual
+  const getTabStats = () => {
+    return {
+      all: documents.length,
+      drafts: documents.filter(d => d.status === 'draft').length,
+      stored: documents.filter(d => d.status === 'stored').length,
+      archived: documents.filter(d => d.status === 'archived').length
+    };
+  };
+
+  const tabStats = getTabStats();
 
   return (
     <div className="space-y-6">
@@ -350,10 +169,10 @@ export function DocumentsPage() {
         
         <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
           <DialogTrigger asChild>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Subir Documento
-        </Button>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Subir Documento
+            </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -380,7 +199,7 @@ export function DocumentsPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.length}</div>
+            <div className="text-2xl font-bold">{tabStats.all}</div>
             <p className="text-xs text-muted-foreground">
               Total de documentos
             </p>
@@ -393,7 +212,7 @@ export function DocumentsPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.filter(d => d.status === 'draft').length}</div>
+            <div className="text-2xl font-bold">{tabStats.drafts}</div>
             <p className="text-xs text-muted-foreground">
               Pendientes de finalizar
             </p>
@@ -406,7 +225,7 @@ export function DocumentsPage() {
             <Archive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.filter(d => d.status === 'stored').length}</div>
+            <div className="text-2xl font-bold">{tabStats.stored}</div>
             <p className="text-xs text-muted-foreground">
               Listos para compartir
             </p>
@@ -419,7 +238,7 @@ export function DocumentsPage() {
             <Download className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.filter(d => d.status === 'archived').length}</div>
+            <div className="text-2xl font-bold">{tabStats.archived}</div>
             <p className="text-xs text-muted-foreground">
               Documentos históricos
             </p>
@@ -428,23 +247,25 @@ export function DocumentsPage() {
       </div>
 
       {/* 📊 Estadísticas de estado de documentos */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Estado de mis Documentos</CardTitle>
-          <CardDescription>
-            Distribución de tus documentos por estado actual
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DocumentStatusStats 
-            stats={{
-              draft: documents.filter(d => d.status === 'draft').length,
-              stored: documents.filter(d => d.status === 'stored').length,
-              archived: documents.filter(d => d.status === 'archived').length
-            }}
-          />
-        </CardContent>
-      </Card>
+      {stats && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Estado de mis Documentos</CardTitle>
+            <CardDescription>
+              Distribución de tus documentos por estado actual
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DocumentStatusStats 
+              stats={{
+                draft: stats.byStatus?.draft || 0,
+                stored: stats.byStatus?.stored || 0,
+                archived: stats.byStatus?.archived || 0
+              }}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* 📄 Lista de documentos con tabs y filtros */}
       <Card>
@@ -458,25 +279,13 @@ export function DocumentsPage() {
           {/* 🎯 Tabs para categorizar documentos */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="all">Todos ({filteredDocuments.length})</TabsTrigger>
-              <TabsTrigger value="own">Míos ({documents.filter(d => d.createdBy === 'current-user').length})</TabsTrigger>
-              <TabsTrigger value="drafts">Borradores ({documents.filter(d => d.status === 'draft').length})</TabsTrigger>
-              <TabsTrigger value="archived">Archivados ({documents.filter(d => d.status === 'archived').length})</TabsTrigger>
+              <TabsTrigger value="all">Todos ({tabStats.all})</TabsTrigger>
+              <TabsTrigger value="drafts">Borradores ({tabStats.drafts})</TabsTrigger>
+              <TabsTrigger value="stored">Finalizados ({tabStats.stored})</TabsTrigger>
+              <TabsTrigger value="archived">Archivados ({tabStats.archived})</TabsTrigger>
             </TabsList>
 
             <TabsContent value={activeTab} className="space-y-4">
-              {/* 🔍 Filtros */}
-              <DocumentFilters
-                filters={filters}
-                onFiltersChange={setFilters}
-                availableUsers={[
-                  { id: 'user1', name: 'María González' },
-                  { id: 'user2', name: 'Carlos Pérez' },
-                  { id: 'current-user', name: userName }
-                ]}
-                availableTags={['acta', 'informe', 'ordenanza', 'reunión', 'presupuesto']}
-              />
-
               {/* 📋 Lista de documentos */}
               <div className="min-h-[400px]">
                 {filteredDocuments.length === 0 && !isLoading ? (
@@ -496,28 +305,34 @@ export function DocumentsPage() {
                       <Plus className="w-4 h-4 mr-2" />
                       Subir mi primer documento
                     </Button>
-              </div>
+                  </div>
                 ) : (
-                  <DocumentList
-                    documents={filteredDocuments}
-                    isLoading={isLoading}
-                    filters={filters}
-                    onFiltersChange={setFilters}
-                    onView={handleView}
-                    onDownload={handleDownload}
-                    onArchive={handleArchive}
-                    onRestore={handleRestore}
-                    onDelete={handleDelete}
-                    onEdit={handleEdit}
-                    onShare={handleShare}
-                    currentPage={currentPage}
-                    totalPages={Math.ceil(filteredDocuments.length / 20)}
-                    pageSize={20}
-                    totalItems={filteredDocuments.length}
-                    onPageChange={setCurrentPage}
-                    defaultLayout="grid"
-                    showFilters={false} // Ya tenemos filtros arriba
-                  />
+                                  <DocumentList
+                  documents={filteredDocuments}
+                  isLoading={isLoading}
+                  error={error}
+                  filters={{}}
+                  onFiltersChange={async (newFilters) => {
+                    // Convert component filters to hook filters
+                    const hookFilters: Partial<import('@/types/document').DocumentFilters> = {};
+                    if (newFilters.search) hookFilters.search = newFilters.search;
+                    await updateFilters(hookFilters);
+                  }}
+                  onView={handleView}
+                  onDownload={handleDownload}
+                  onArchive={handleArchive}
+                  onRestore={handleRestore}
+                  onDelete={handleDelete}
+                  onEdit={handleEdit}
+                  onShare={handleShare}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={20}
+                  totalItems={filteredDocuments.length}
+                  onPageChange={changePage}
+                  defaultLayout="grid"
+                  showFilters={true}
+                />
                 )}
               </div>
             </TabsContent>

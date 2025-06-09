@@ -39,8 +39,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
-// 🎯 Tipos para el upload
-interface UploadFile {
+// 🎯 Import tipos
+import type { UploadFile } from '@/types/document';
+
+// 🎯 Tipos para el upload interno
+interface UploadFileState {
   file: File;
   id: string;
   progress: number;
@@ -50,13 +53,7 @@ interface UploadFile {
 }
 
 interface DocumentUploadProps {
-  onUpload?: (files: Array<{
-    file: File;
-    title: string;
-    description?: string;
-    workspace: string;
-    tags?: string[];
-  }>) => Promise<void>;
+  onUpload?: (files: UploadFile[]) => Promise<void>;
   className?: string;
   maxFiles?: number;
   maxFileSize?: number; // en MB
@@ -86,7 +83,7 @@ export function DocumentUpload({
   multiple = true
 }: DocumentUploadProps) {
   const { user } = useAuth();
-  const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
+  const [uploadFiles, setUploadFiles] = useState<UploadFileState[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   
@@ -99,7 +96,7 @@ export function DocumentUpload({
   }>({
     title: '',
     description: '',
-    workspace: defaultWorkspace || user?.workspaces?.[0] || 'presidencia',
+    workspace: defaultWorkspace || user?.workspace || 'presidencia',
     tags: []
   });
 
@@ -150,7 +147,7 @@ export function DocumentUpload({
 
   // 📄 Manejar archivos seleccionados
   const handleFilesAccepted = useCallback((acceptedFiles: File[]) => {
-    const newFiles: UploadFile[] = acceptedFiles.map((file) => {
+    const newFiles: UploadFileState[] = acceptedFiles.map((file) => {
       const id = Math.random().toString(36).substr(2, 9);
       const error = validateFile(file);
       
@@ -207,22 +204,22 @@ export function DocumentUpload({
     try {
       // Si solo hay un archivo, usar los metadatos del modal
       if (validFiles.length === 1) {
-        const uploadData = [{
+        const uploadData: UploadFile[] = [{
           file: validFiles[0].file,
           title: fileMetadata.title || validFiles[0].file.name,
           description: fileMetadata.description,
-          workspace: fileMetadata.workspace,
+          workspace: fileMetadata.workspace as any,
           tags: fileMetadata.tags
         }];
 
         await onUpload(uploadData);
       } else {
         // Para múltiples archivos, usar nombres de archivo como títulos
-        const uploadData = validFiles.map(uploadFile => ({
+        const uploadData: UploadFile[] = validFiles.map(uploadFile => ({
           file: uploadFile.file,
           title: uploadFile.file.name,
           description: '',
-          workspace: fileMetadata.workspace,
+          workspace: fileMetadata.workspace as any,
           tags: []
         }));
 
@@ -234,7 +231,7 @@ export function DocumentUpload({
       setFileMetadata({
         title: '',
         description: '',
-        workspace: defaultWorkspace || user?.workspaces?.[0] || 'presidencia',
+        workspace: defaultWorkspace || user?.workspace || 'presidencia',
         tags: []
       });
       

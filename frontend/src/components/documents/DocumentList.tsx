@@ -45,9 +45,9 @@ interface Document {
 interface DocumentListProps {
   documents?: Document[];
   isLoading?: boolean;
-  error?: string;
+  error?: string | null;
   filters?: DocumentFiltersType;
-  onFiltersChange?: (filters: DocumentFiltersType) => void;
+  onFiltersChange?: (filters: Partial<DocumentFiltersType>) => void;
   onView?: (documentId: string) => void;
   onDownload?: (documentId: string) => void;
   onArchive?: (documentId: string) => void;
