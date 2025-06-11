@@ -1,5 +1,7 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify'
 import { uploadRoute } from './upload'
+import { uploadFileRoute } from './upload-file'
+import { createDocumentRoute } from './create-document'
 import { listRoute } from './list'
 import { getRoute } from './get'
 import { downloadRoute } from './download'
@@ -12,8 +14,14 @@ export async function documentRoutes(
   fastify: FastifyInstance,
   options: FastifyPluginOptions
 ): Promise<void> {
-  // 📤 POST /documents - Upload de documentos
+  // 📤 POST /documents - Upload de documentos (método original)
   await fastify.register(uploadRoute)
+  
+  // 🚀 POST /documents/upload-file - Subir solo archivo (nuevo método paso 1)
+  await fastify.register(uploadFileRoute)
+  
+  // 📝 POST /documents/create-document - Crear documento con metadatos (nuevo método paso 2)
+  await fastify.register(createDocumentRoute)
   
   // 📋 GET /documents - Listar documentos con filtros
   await fastify.register(listRoute)

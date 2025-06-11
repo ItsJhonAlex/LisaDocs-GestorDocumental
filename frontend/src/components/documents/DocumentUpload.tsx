@@ -40,7 +40,7 @@ import { cn } from '@/lib/utils';
 
 // 🎯 Importar tipos del backend y documento
 import type { WorkspaceType, BackendDocument } from '@/hooks/useBackendDocuments';
-import type { DocumentType, createDocumentTags } from '@/types/document';
+import type { DocumentType } from '@/types/document';
 import { DocumentTypeSelector } from './DocumentTypeSelector';
 
 // 🎯 Tipos para el upload interno
@@ -216,7 +216,91 @@ export function DocumentUpload({
     }
   };
 
-  // 📤 Función para subir un archivo individual al backend
+  // 🚀 PASO 1: Subir solo el archivo al servidor
+  const uploadFileStep = async (
+    file: File
+  ): Promise<{ tempFileId: string; filename: string; fileSize: number; mimeType: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    console.log('📤 Step 1: Uploading file only:', {
+      filename: file.name,
+      size: file.size,
+      type: file.type
+    });
+
+    const response = await fetch('/api/documents/upload-file', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.details || errorData.error || 'Error uploading file');
+    }
+
+    const result = await response.json();
+    console.log('✅ Step 1 completed:', result.data);
+    return result.data;
+  };
+
+  // 📝 PASO 2: Crear documento con metadatos
+  const createDocumentStep = async (
+    tempFileId: string,
+    metadata: {
+      title: string;
+      description?: string;
+      workspace: WorkspaceType;
+      documentType?: DocumentType;
+      tags: string[];
+    }
+  ): Promise<BackendDocument> => {
+    // ⚠️ Validar metadatos
+    if (!metadata.title) {
+      throw new Error('Title is required but is missing');
+    }
+    if (!metadata.workspace) {
+      throw new Error('Workspace is required but is missing');
+    }
+
+    // 🎯 Combinar tipo de documento + tags adicionales
+    const finalTags = metadata.documentType 
+      ? [metadata.documentType, ...metadata.tags]
+      : metadata.tags;
+
+    const payload = {
+      tempFileId,
+      title: metadata.title,
+      description: metadata.description || undefined,
+      workspace: metadata.workspace,
+      tags: finalTags
+    };
+
+    console.log('📝 Step 2: Creating document with metadata:', payload);
+
+    const response = await fetch('/api/documents/create-document', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.details || errorData.error || 'Error creating document');
+    }
+
+    const result = await response.json();
+    console.log('✅ Step 2 completed:', result.data);
+    return result.data;
+  };
+
+  // 📤 Función principal que combina ambos pasos
   const uploadSingleFile = async (
     file: File,
     metadata: {
@@ -228,111 +312,20 @@ export function DocumentUpload({
     },
     onProgress?: (progress: number) => void
   ): Promise<BackendDocument> => {
-    const formData = new FormData();
-    
-    // Adjuntar archivo
-    formData.append('file', file);
-    
-    // Adjuntar metadatos según el formato del backend
-    console.log('📤 Uploading with metadata:', {
-      title: metadata.title,
-      description: metadata.description,
-      workspace: metadata.workspace,
-      workspaceType: typeof metadata.workspace,
-      tags: metadata.tags
-    });
-    
-    // 🐛 Debug FormData - Verificar valores antes de agregar
-    console.log('🔍 Metadata values before FormData:', {
-      title: metadata.title,
-      titleType: typeof metadata.title,
-      titleValid: !!metadata.title,
-      description: metadata.description,
-      workspace: metadata.workspace,
-      workspaceType: typeof metadata.workspace,
-      workspaceValid: !!metadata.workspace,
-      tags: metadata.tags
-    });
+    console.log('🚀 Starting two-step upload process...');
 
-    // ⚠️ Validar que tenemos los campos requeridos
-    if (!metadata.title) {
-      throw new Error('Title is required but is missing');
-    }
-    if (!metadata.workspace) {
-      throw new Error('Workspace is required but is missing');
-    }
-
-    // ✅ Agregar campos con validación
-    formData.append('title', metadata.title);
-    if (metadata.description && metadata.description.trim()) {
-      formData.append('description', metadata.description);
-    }
-    formData.append('workspace', metadata.workspace);
+    // PASO 1: Subir archivo
+    if (onProgress) onProgress(25);
+    const { tempFileId } = await uploadFileStep(file);
     
-    // 🎯 Combinar tipo de documento + tags adicionales
-    const finalTags = metadata.documentType 
-      ? [metadata.documentType, ...metadata.tags]
-      : metadata.tags;
+    // PASO 2: Crear documento
+    if (onProgress) onProgress(75);
+    const document = await createDocumentStep(tempFileId, metadata);
     
-    if (finalTags.length > 0) {
-      formData.append('tags', finalTags.join(','));
-    }
+    if (onProgress) onProgress(100);
     
-    // 🐛 Verificar que los datos se agregaron correctamente
-    console.log('📋 FormData entries after appending:');
-    for (const [key, value] of formData.entries()) {
-      console.log(`  ${key}: ${value} (${typeof value})`);
-    }
-
-    // Hacer petición al backend
-    const response = await fetch('/api/documents', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      },
-      body: formData
-    });
-
-    if (!response.ok) {
-      let errorMessage = `Error ${response.status}: ${response.statusText}`;
-      
-      // Intentar parsear JSON solo si el content-type es JSON
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.details || errorData.error || errorMessage;
-        } catch (jsonError) {
-          // Si falla el parsing JSON, usar el mensaje de status HTTP
-          console.warn('Failed to parse error response as JSON:', jsonError);
-        }
-      } else {
-        // Si no es JSON, intentar leer como texto
-        try {
-          const errorText = await response.text();
-          if (errorText.trim()) {
-            errorMessage = errorText;
-          }
-        } catch (textError) {
-          console.warn('Failed to read error response as text:', textError);
-        }
-      }
-      
-      throw new Error(errorMessage);
-    }
-
-    // Parsear respuesta exitosa
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('El servidor no devolvió una respuesta JSON válida');
-    }
-
-    try {
-      const result = await response.json();
-      return result.data;
-    } catch (jsonError) {
-      throw new Error('Error al procesar la respuesta del servidor: respuesta JSON inválida');
-    }
+    console.log('🎉 Two-step upload completed successfully!');
+    return document;
   };
 
   // 🚀 Procesar subida
