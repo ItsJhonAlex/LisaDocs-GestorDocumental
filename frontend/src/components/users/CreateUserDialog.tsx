@@ -361,7 +361,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
 
               {/* Indicador de fortaleza de contraseña */}
               {passwordAnalysis && (
-                <div className="space-y-2 p-3 bg-muted/50 rounded-lg border">
+                <div className="space-y-2 p-3 bg-muted-solid rounded-lg border">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-foreground">Fortaleza de la contraseña</span>
                     <Badge variant={passwordAnalysis.score >= 4 ? 'default' : passwordAnalysis.score >= 3 ? 'secondary' : 'destructive'}>
@@ -409,9 +409,9 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                       <SelectTrigger className={`pl-9 bg-background border text-foreground ${errors.role ? 'border-destructive' : 'border-input'}`}>
                         <SelectValue placeholder="Seleccionar rol" />
                       </SelectTrigger>
-                      <SelectContent className="bg-popover border shadow-lg">
+                      <SelectContent className="bg-solid border shadow-lg">
                         {getAvailableRoles().map((role) => (
-                          <SelectItem key={role.value} value={role.value} className="bg-popover hover:bg-accent text-popover-foreground">
+                          <SelectItem key={role.value} value={role.value} className="bg-solid hover:bg-accent text-foreground">
                             <div>
                               <div className="font-medium">{role.label}</div>
                               <div className="text-xs text-muted-foreground">{role.description}</div>
@@ -437,9 +437,9 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                       <SelectTrigger className={`pl-9 bg-background border text-foreground ${errors.workspace ? 'border-destructive' : 'border-input'}`}>
                         <SelectValue placeholder="Seleccionar workspace" />
                       </SelectTrigger>
-                      <SelectContent className="bg-popover border shadow-lg">
+                      <SelectContent className="bg-solid border shadow-lg">
                         {WORKSPACE_OPTIONS.map((workspace) => (
-                          <SelectItem key={workspace.value} value={workspace.value} className="bg-popover hover:bg-accent text-popover-foreground">
+                          <SelectItem key={workspace.value} value={workspace.value} className="bg-solid hover:bg-accent text-foreground">
                             <div>
                               <div className="font-medium">{workspace.label}</div>
                               <div className="text-xs text-muted-foreground">{workspace.description}</div>

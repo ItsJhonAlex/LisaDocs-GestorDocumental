@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
+import { useAuth } from './useAuth';
 
 import { documentService } from '@/services/documentService';
 import type {
   Document,
-  DocumentsResponse,
   DocumentFilters,
   UploadFile,
   DocumentStats,
@@ -14,6 +14,14 @@ import type {
 
 interface UseDocumentsOptions extends DocumentFilters {
   autoLoad?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+interface DocumentResponse {
+  documents: Document[];
+  total: number;
+  hasMore: boolean;
 }
 
 /**
@@ -26,6 +34,10 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
   // 📊 Estado principal
   const [documents, setDocuments] = useState<Document[]>([]);
   const [filters, setFilters] = useState<DocumentFilters>(initialFilters);
+  const [paginationOptions, setPaginationOptions] = useState({
+    limit: options.limit || 20,
+    offset: options.offset || 0
+  });
   const [pagination, setPagination] = useState({
     total: 0,
     limit: 20,
@@ -48,22 +60,71 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
   // 📊 Estadísticas
   const [stats, setStats] = useState<DocumentStats | null>(null);
 
+
+
+  // 📄 Obtener documentos del backend
+  const fetchDocuments = async (
+    filters: DocumentFilters = {}, 
+    paginationOpts?: { limit?: number; offset?: number }
+  ): Promise<DocumentResponse> => {
+    const params = new URLSearchParams();
+    
+    // Agregar filtros a los parámetros
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        if (Array.isArray(value)) {
+          value.forEach(v => params.append(key, v.toString()));
+        } else {
+          params.append(key, value.toString());
+        }
+      }
+    });
+
+    // Agregar paginación
+    const { limit = 20, offset = 0 } = paginationOpts || paginationOptions;
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+
+    const response = await fetch(`/api/documents?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.details || errorData.error || 'Error al cargar documentos');
+    }
+
+    const result = await response.json();
+    return result.data;
+  };
+
   // 📋 ============ OPERACIONES DE LECTURA ============
 
   /**
    * 📊 Cargar documentos con filtros actuales
    */
-  const loadDocuments = useCallback(async (newFilters?: DocumentFilters) => {
+  const loadDocuments = useCallback(async (
+    newFilters?: DocumentFilters, 
+    newPaginationOpts?: { limit?: number; offset?: number }
+  ) => {
     const filtersToUse = newFilters || filters;
+    const paginationToUse = newPaginationOpts || paginationOptions;
     
     setLoading(prev => ({ ...prev, documents: true }));
     setError(null);
 
     try {
-      const response: DocumentsResponse = await documentService.getDocuments(filtersToUse);
+      const result = await fetchDocuments(filtersToUse, paginationToUse);
       
-      setDocuments(response.documents);
-      setPagination(response.pagination);
+      setDocuments(result.documents);
+      setPagination(prev => ({
+        ...prev,
+        total: result.total,
+        hasMore: result.hasMore
+      }));
     } catch (err: any) {
       const errorMessage = err.message || 'Error al cargar documentos';
       setError(errorMessage);
@@ -71,7 +132,7 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
     } finally {
       setLoading(prev => ({ ...prev, documents: false }));
     }
-  }, [filters]);
+  }, [filters, paginationOptions]);
 
   /**
    * 🔄 Recargar documentos (sin cambiar filtros)
@@ -282,20 +343,22 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
    * 🔍 Actualizar filtros y recargar
    */
   const updateFilters = useCallback(async (newFilters: Partial<DocumentFilters>) => {
-    const updatedFilters = { ...filters, ...newFilters, offset: 0 }; // Reset offset
+    const updatedFilters = { ...filters, ...newFilters };
+    const resetPagination = { ...paginationOptions, offset: 0 }; // Reset offset
     setFilters(updatedFilters);
-    await loadDocuments(updatedFilters);
-  }, [filters, loadDocuments]);
+    setPaginationOptions(resetPagination);
+    await loadDocuments(updatedFilters, resetPagination);
+  }, [filters, paginationOptions, loadDocuments]);
 
   /**
    * 📄 Cambiar página
    */
   const changePage = useCallback(async (page: number) => {
-    const offset = (page - 1) * (filters.limit || 20);
-    const newFilters = { ...filters, offset };
-    setFilters(newFilters);
-    await loadDocuments(newFilters);
-  }, [filters, loadDocuments]);
+    const offset = (page - 1) * paginationOptions.limit;
+    const newPaginationOptions = { ...paginationOptions, offset };
+    setPaginationOptions(newPaginationOptions);
+    await loadDocuments(filters, newPaginationOptions);
+  }, [filters, loadDocuments, paginationOptions]);
 
   /**
    * 🔍 Búsqueda rápida
@@ -324,13 +387,11 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
     }
   }, [autoLoad, loadStats]); // Solo al montar si autoLoad
 
-  // 📊 ============ VALORES COMPUTED ============
+  // 🎯 ============ RETURN ============
 
   const isLoading = Object.values(loading).some(Boolean);
-  const currentPage = Math.floor((filters.offset || 0) / (filters.limit || 20)) + 1;
-  const totalPages = Math.ceil(pagination.total / (filters.limit || 20));
-
-  // 🎯 ============ RETURN ============
+  const currentPage = Math.floor(paginationOptions.offset / paginationOptions.limit) + 1;
+  const totalPages = Math.ceil(pagination.total / paginationOptions.limit);
 
   return {
     // 📊 Estado

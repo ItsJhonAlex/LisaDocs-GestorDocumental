@@ -7,6 +7,7 @@ export { DocumentFilters } from './DocumentFilters';
 export { DocumentActions, DocumentQuickActions } from './DocumentActions';
 export { DocumentStatus } from './DocumentStatus';
 export { DocumentStatusStats } from './DocumentStatusStats';
+export { DocumentTypeSelector, DocumentTypeBadge, DocumentTypeList } from './DocumentTypeSelector';
 
 // 🎯 Tipos y interfaces - usando los nombres correctos de las exportaciones existentes
 export type { DocumentFilters as DocumentFiltersType } from './DocumentFilters'; 

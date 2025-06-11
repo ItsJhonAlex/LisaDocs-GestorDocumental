@@ -32,7 +32,8 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useAuth } from '@/hooks/useAuth';
 
 // 🎯 Importar tipos
-import type { Document, UploadFile } from '@/types/document';
+import type { Document } from '@/types/document';
+import type { BackendDocument } from '@/hooks/useBackendDocuments';
 
 // 🎯 Tipos específicos para AMPP
 interface AMPPStats {
@@ -121,16 +122,16 @@ export function AMPPDashboard() {
   const filteredDocuments = getFilteredDocuments();
 
   // 🎯 Gestores de eventos
-  const handleUpload = async (files: UploadFile[]) => {
+  const handleUpload = async (backendDocuments: BackendDocument[]) => {
     try {
-      if (files.length === 1) {
-        await uploadDocument(files[0]);
-      } else {
-        await uploadMultipleDocuments(files);
-      }
+      console.log('📤 Documents uploaded to AMPP:', backendDocuments);
+      
+      // Los documentos ya están subidos al backend a través del DocumentUpload
+      // El hook useDocuments se actualizará automáticamente cuando se requiera
+      console.log('✅ Documents successfully uploaded to AMPP workspace');
       setIsUploadOpen(false);
     } catch (error) {
-      console.error('Error uploading files to AMPP:', error);
+      console.error('❌ Error handling uploaded documents:', error);
     }
   };
 
@@ -295,7 +296,7 @@ export function AMPPDashboard() {
                     Subir Documento
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto document-upload-dialog">
                   <DialogHeader>
                     <DialogTitle>Subir Documento a la AMPP</DialogTitle>
                     <DialogDescription>

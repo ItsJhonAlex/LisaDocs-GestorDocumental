@@ -18,6 +18,7 @@ import { NotificationsPage } from '@/pages/NotificationsPage';
 import { WorkspacesPage } from '@/pages/WorkspacesPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { UnauthorizedPage } from '@/pages/UnauthorizedPage';
+import { StyleTestPage } from '@/pages/StyleTestPage';
 
 // 🔒 Componentes de protección
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -33,6 +34,9 @@ export function App() {
         {/* 🚪 Rutas públicas */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        
+        {/* 🎨 Ruta temporal para probar estilos */}
+        <Route path="/style-test" element={<StyleTestPage />} />
         
         {/* 🏠 Ruta raíz redirige al dashboard */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

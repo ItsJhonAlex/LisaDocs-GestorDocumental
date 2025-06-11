@@ -1,46 +1,503 @@
 @import "tailwindcss";
 
+/* ==========================================
+   🎨 VARIABLES CSS PERSONALIZADAS
+   ========================================== */
+
 :root {
+  /* 📐 Border radius */
   --radius: 0.625rem;
+  
+  /* 🌟 Colores principales */
   --background: 0 0% 100%;
-  --foreground: 0 0% 14.5%;
+  --foreground: 224 71.4% 4.1%;
+  
+  /* 📄 Card */
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 14.5%;
+  --card-foreground: 224 71.4% 4.1%;
+  
+  /* 💬 Popover */
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 14.5%;
-  --primary: 0 0% 20.5%;
-  --primary-foreground: 0 0% 98.5%;
-  --secondary: 0 0% 97%;
-  --secondary-foreground: 0 0% 20.5%;
-  --muted: 0 0% 97%;
-  --muted-foreground: 0 0% 55.6%;
-  --accent: 0 0% 97%;
-  --accent-foreground: 0 0% 20.5%;
+  --popover-foreground: 224 71.4% 4.1%;
+  
+  /* 🎯 Primary */
+  --primary: 220.9 39.3% 11%;
+  --primary-foreground: 210 20% 98%;
+  
+  /* 🔧 Secondary */
+  --secondary: 220 14.3% 95.9%;
+  --secondary-foreground: 220.9 39.3% 11%;
+  
+  /* 🔇 Muted */
+  --muted: 220 14.3% 95.9%;
+  --muted-foreground: 220 8.9% 46.1%;
+  
+  /* ✨ Accent */
+  --accent: 220 14.3% 95.9%;
+  --accent-foreground: 220.9 39.3% 11%;
+  
+  /* ⚠️ Destructive */
   --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 92.2%;
-  --input: 0 0% 92.2%;
-  --ring: 0 0% 70.8%;
+  --destructive-foreground: 210 20% 98%;
+  
+  /* 🖼️ Border & Input */
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 224 71.4% 4.1%;
 }
 
 .dark {
-  --background: 0 0% 14.5%;
-  --foreground: 0 0% 98.5%;
-  --card: 0 0% 20.5%;
-  --card-foreground: 0 0% 98.5%;
-  --popover: 0 0% 20.5%;
-  --popover-foreground: 0 0% 98.5%;
-  --primary: 0 0% 92.2%;
-  --primary-foreground: 0 0% 20.5%;
-  --secondary: 0 0% 26.9%;
-  --secondary-foreground: 0 0% 98.5%;
-  --muted: 0 0% 26.9%;
-  --muted-foreground: 0 0% 70.8%;
-  --accent: 0 0% 26.9%;
-  --accent-foreground: 0 0% 98.5%;
+  --background: 224 71.4% 4.1%;
+  --foreground: 210 20% 98%;
+  
+  --card: 224 71.4% 4.1%;
+  --card-foreground: 210 20% 98%;
+  
+  --popover: 224 71.4% 4.1%;
+  --popover-foreground: 210 20% 98%;
+  
+  --primary: 210 20% 98%;
+  --primary-foreground: 220.9 39.3% 11%;
+  
+  --secondary: 215 27.9% 16.9%;
+  --secondary-foreground: 210 20% 98%;
+  
+  --muted: 215 27.9% 16.9%;
+  --muted-foreground: 217.9 10.6% 64.9%;
+  
+  --accent: 215 27.9% 16.9%;
+  --accent-foreground: 210 20% 98%;
+  
   --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 26.9%;
-  --input: 0 0% 26.9%;
-  --ring: 0 0% 55.6%;
+  --destructive-foreground: 210 20% 98%;
+  
+  --border: 215 27.9% 16.9%;
+  --input: 215 27.9% 16.9%;
+  --ring: 216 12.2% 83.9%;
+}
+
+/* ==========================================
+   🏗️ RESET Y ESTILOS BASE
+   ========================================== */
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* ==========================================
+   🎨 MEJORAS DE COMPONENTES SHADCN/UI
+   ========================================== */
+
+/* 🔧 Scroll personalizado */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* 📱 Focus visible mejorado */
+[data-slot="button"]:focus-visible,
+[data-slot="input"]:focus-visible,
+[data-slot="textarea"]:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* 📄 Cards con fondo sólido */
+[data-slot="card"] {
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+/* 🍞 Toast notifications mejorados */
+[data-sonner-toast] {
+  background-color: hsl(var(--background)) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  background-color: hsl(142.1 76.2% 36.3% / 0.1) !important;
+  border-color: hsl(142.1 76.2% 36.3%) !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background-color: hsl(var(--destructive) / 0.1) !important;
+  border-color: hsl(var(--destructive)) !important;
+}
+
+/* ==========================================
+   🏗️ LAYOUT IMPROVEMENTS
+   ========================================== */
+
+/* 📱 Sidebar backdrop sólido */
+.sidebar-backdrop {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px);
+}
+
+/* 🏠 Main content con fondo sólido */
+main {
+  background-color: hsl(var(--background));
+  min-height: calc(100vh - 140px);
+}
+
+/* 📊 Header con fondo sólido */
+header {
+  background-color: hsl(var(--background));
+  border-color: hsl(var(--border));
+  backdrop-filter: none;
+}
+
+/* 🍞 Breadcrumbs con fondo sólido */
+.breadcrumbs-container {
+  background-color: hsl(var(--muted) / 0.3);
+  backdrop-filter: none;
+}
+
+/* 🦶 Footer con fondo sólido */
+footer {
+  background-color: hsl(var(--muted) / 0.5);
+  border-color: hsl(var(--border));
+}
+
+/* ==========================================
+   🎯 LOADING STATES
+   ========================================== */
+
+.loading-overlay {
+  background-color: hsl(var(--background) / 0.9) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* ==========================================
+   ✨ ANIMATIONS
+   ========================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* ==========================================
+   🌟 UTILITY CLASSES
+   ========================================== */
+
+/* Fondo sólido para elementos que no deben ser transparentes */
+.bg-solid {
+  background-color: hsl(var(--background)) !important;
+}
+
+.bg-card-solid {
+  background-color: hsl(var(--card)) !important;
+}
+
+.bg-muted-solid {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* Glass effect controlado */
+.glass-effect {
+  background-color: hsl(var(--background) / 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+/* Sombras mejoradas */
+.shadow-soft {
+  box-shadow: 0 2px 8px hsl(var(--foreground) / 0.1);
+}
+
+.shadow-medium {
+  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.15);
+}
+
+.shadow-strong {
+  box-shadow: 0 8px 32px hsl(var(--foreground) / 0.2);
+}
+
+/* ==========================================
+   🔧 FIXES ESPECÍFICOS PARA ELEMENTOS TRANSPARENTES
+   ========================================== */
+
+/* Forzar fondos sólidos en componentes específicos */
+[data-radix-popper-content-wrapper] {
+  background-color: hsl(var(--popover)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Dropdown menus con fondo sólido */
+[role="menu"] {
+  background-color: hsl(var(--popover)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Select content con fondo sólido */
+[data-radix-select-content] {
+  background-color: hsl(var(--popover)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Tooltips con fondo sólido */
+[data-radix-tooltip-content] {
+  background-color: hsl(var(--foreground)) !important;
+  color: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Command palettes y search */
+[cmdk-root] {
+  background-color: hsl(var(--background)) !important;
+}
+
+[cmdk-input] {
+  background-color: hsl(var(--background)) !important;
+}
+
+[cmdk-list] {
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Tabs content */
+[data-state="active"][role="tabpanel"] {
+  background-color: hsl(var(--background));
+}
+
+/* Form elements - ensure solid backgrounds */
+input:not([type="checkbox"]):not([type="radio"]) {
+  background-color: hsl(var(--background)) !important;
+}
+
+textarea {
+  background-color: hsl(var(--background)) !important;
+}
+
+select {
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Button variants - ensure proper opacity */
+button[data-state="open"] {
+  background-color: hsl(var(--accent)) !important;
+}
+
+/* Navigation items */
+nav a[data-state="active"] {
+  background-color: hsl(var(--accent)) !important;
+}
+
+/* ==========================================
+   🌙 MODO OSCURO - FIXES ADICIONALES
+   ========================================== */
+
+.dark input:not([type="checkbox"]):not([type="radio"]) {
+  background-color: hsl(var(--input)) !important;
+}
+
+.dark textarea {
+  background-color: hsl(var(--input)) !important;
+}
+
+.dark select {
+  background-color: hsl(var(--input)) !important;
+}
+
+/* ==========================================
+   📤 DOCUMENT UPLOAD SPECIFIC FIXES
+   ========================================== */
+
+/* Fix para dialog de subir documentos */
+.document-upload-dialog [data-slot="dialog-overlay"],
+.document-upload-dialog [data-radix-dialog-overlay] {
+  background-color: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(6px) !important;
+}
+
+/* Asegurar que el contenido del dialog sea completamente opaco */
+.document-upload-dialog [data-slot="dialog-content"],
+.document-upload-dialog [data-radix-dialog-content] {
+  background-color: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Prevent text selection en títulos de dialog */
+.document-upload-dialog [data-slot="dialog-title"],
+.document-upload-dialog [data-slot="dialog-description"] {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  background-color: transparent !important;
+}
+
+/* Fix para áreas de upload dentro del dialog */
+.document-upload-dialog .bg-primary\/10 {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* Card content solid backgrounds */
+.document-upload-dialog [data-slot="card-content"] {
+  background-color: hsl(var(--card)) !important;
+}
+
+/* Document upload específicos */
+.document-upload-dialog input[type="file"] + label {
+  background-color: hsl(var(--card)) !important;
+}
+
+.document-upload-dialog .border-dashed {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Fix general para evitar selección de texto en elementos UI */
+[data-slot="dialog-title"],
+[data-slot="dialog-description"],
+.cursor-pointer {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* Asegurar que todas las cards tengan fondo sólido */
+.document-upload-dialog [data-slot="card"],
+.document-upload-dialog .border {
+  background-color: hsl(var(--card)) !important;
+}
+
+/* Fondo sólido para elementos con border-dashed */
+.border-dashed {
+  background-color: hsl(var(--card)) !important;
+}
+
+/* Fondo muted más sólido */
+.bg-muted {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* ==========================================
+   📱 RESPONSIVE IMPROVEMENTS
+   ========================================== */
+
+/* Mejoras para móvil */
+@media (max-width: 768px) {
+  .sidebar-backdrop {
+    background-color: rgba(0, 0, 0, 0.7) !important;
+  }
+  
+  /* Asegurar que los overlays sean más visibles en móvil */
+  .loading-overlay {
+    background-color: hsl(var(--background) / 0.95) !important;
+  }
+}
+
+/* ==========================================
+   🎯 SELECT COMPONENT SPECIFIC FIXES
+   ========================================== */
+
+/* Asegurar que todos los elementos Select tengan fondos sólidos */
+[data-radix-select-viewport] {
+  background-color: hsl(var(--background)) !important;
+}
+
+[data-radix-select-item] {
+  background-color: hsl(var(--background)) !important;
+}
+
+[data-radix-select-item]:hover,
+[data-radix-select-item][data-highlighted] {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+
+/* Dialog content fixes */
+[data-radix-dialog-content] {
+  background-color: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+[data-radix-dialog-overlay] {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Dialog overlay más específico */
+[data-slot="dialog-overlay"] {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Table header fixes */
+.table-header-bg {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* ==========================================
+   🎨 COMPONENTS HOVER STATES
+   ========================================== */
+
+/* Card hover states */
+.card-hover:hover {
+  background-color: hsl(var(--accent) / 0.3) !important;
+}
+
+/* List item hover states */
+.list-item-hover:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+
+/* Button group fixes */
+.button-group > button {
+  background-color: hsl(var(--background)) !important;
+}
+
+.button-group > button:hover {
+  background-color: hsl(var(--accent)) !important;
 }

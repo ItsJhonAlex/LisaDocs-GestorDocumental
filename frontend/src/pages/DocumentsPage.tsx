@@ -33,7 +33,8 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useAuth } from '@/hooks/useAuth';
 
 // 🎯 Importar tipos
-import type { Document, UploadFile } from '@/types/document';
+import type { Document } from '@/types/document';
+import type { BackendDocument } from '@/hooks/useBackendDocuments';
 
 /**
  * 📄 Página principal de gestión de documentos
@@ -75,6 +76,36 @@ export function DocumentsPage() {
   // 🎯 Datos del usuario con fallbacks seguros
   const userRole = user?.role || 'usuario';
 
+  // 🎯 Mapear roles a workspaces (valores exactos del backend)
+  const getUserWorkspace = (role: string): string => {
+    switch (role) {
+      case 'administrador':
+      case 'presidente':
+      case 'vicepresidente':
+        return 'presidencia';
+      case 'secretario_cam':
+        return 'cam';
+      case 'secretario_ampp':
+        return 'ampp';
+      case 'intendente':
+        return 'intendencia';
+      case 'secretario_cf':
+      case 'cf_member':
+        return 'comisiones_cf';
+      default:
+        return 'presidencia'; // Fallback seguro
+    }
+  };
+
+  const userWorkspace = getUserWorkspace(userRole);
+  
+  // 🐛 Debug - verificar valores
+  console.log('🎯 Debug workspace mapping:', {
+    userRole,
+    userWorkspace,
+    user: user?.role
+  });
+
   // 🔍 Documentos filtrados por tab
   const getFilteredDocuments = () => {
     switch (activeTab) {
@@ -92,16 +123,16 @@ export function DocumentsPage() {
   const filteredDocuments = getFilteredDocuments();
 
   // 🎯 Gestores de eventos
-  const handleUpload = async (files: UploadFile[]) => {
+  const handleUpload = async (backendDocuments: BackendDocument[]) => {
     try {
-      if (files.length === 1) {
-        await uploadDocument(files[0]);
-      } else {
-        await uploadMultipleDocuments(files);
-      }
+      console.log('📤 Documents uploaded to personal space:', backendDocuments);
+      
+      // Los documentos ya están subidos al backend a través del hook useBackendDocuments
+      // El hook useDocuments se actualizará automáticamente
+      console.log('✅ Documents successfully uploaded to personal workspace');
       setIsUploadOpen(false);
     } catch (error) {
-      console.error('Error uploading files:', error);
+      console.error('❌ Error handling uploaded documents:', error);
     }
   };
 
@@ -174,11 +205,19 @@ export function DocumentsPage() {
               Subir Documento
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto document-upload-dialog">
             <DialogHeader>
               <DialogTitle>Subir Nuevos Documentos</DialogTitle>
               <DialogDescription>
                 Arrastra archivos o haz clic para seleccionar. Soporta múltiples archivos.
+                {userWorkspace && (
+                  <>
+                    <br />
+                    <Badge variant="outline" className="mt-2">
+                      Workspace: {userWorkspace}
+                    </Badge>
+                  </>
+                )}
               </DialogDescription>
             </DialogHeader>
             <DocumentUpload 
@@ -186,6 +225,7 @@ export function DocumentsPage() {
               allowedTypes={['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'jpg', 'png']}
               maxFileSize={50}
               multiple={true}
+              defaultWorkspace={userWorkspace as any}
             />
           </DialogContent>
         </Dialog>

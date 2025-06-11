@@ -66,7 +66,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b bg-background/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-30 w-full border-b bg-background">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* 🍔 Menú hamburguesa y Logo */}
@@ -97,7 +97,7 @@ export function Header() {
               <Input
                 type="search"
                 placeholder="Buscar documentos, usuarios..."
-                className="pl-10 bg-muted/50"
+                className="pl-10"
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
               />

@@ -1,5 +1,4 @@
-import { useState, useCallback } from 'react';
-// import { useDropzone } from 'react-dropzone';
+import { useState, useCallback, useEffect } from 'react';
 import { 
   Upload, 
   X, 
@@ -39,8 +38,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
-// 🎯 Import tipos
-import type { UploadFile } from '@/types/document';
+// 🎯 Importar tipos del backend y documento
+import type { WorkspaceType, BackendDocument } from '@/hooks/useBackendDocuments';
+import type { DocumentType, createDocumentTags } from '@/types/document';
+import { DocumentTypeSelector } from './DocumentTypeSelector';
 
 // 🎯 Tipos para el upload interno
 interface UploadFileState {
@@ -53,12 +54,12 @@ interface UploadFileState {
 }
 
 interface DocumentUploadProps {
-  onUpload?: (files: UploadFile[]) => Promise<void>;
+  onUpload?: (documents: BackendDocument[]) => Promise<void>;
   className?: string;
   maxFiles?: number;
   maxFileSize?: number; // en MB
   allowedTypes?: string[];
-  defaultWorkspace?: string;
+  defaultWorkspace?: WorkspaceType;
   multiple?: boolean;
 }
 
@@ -91,17 +92,40 @@ export function DocumentUpload({
   const [fileMetadata, setFileMetadata] = useState<{
     title: string;
     description: string;
-    workspace: string;
+    workspace: WorkspaceType;
+    documentType?: DocumentType;
     tags: string[];
   }>({
     title: '',
     description: '',
-    workspace: defaultWorkspace || user?.workspace || 'presidencia',
+    workspace: defaultWorkspace || (user?.workspace as WorkspaceType) || 'presidencia',
+    documentType: undefined,
     tags: []
   });
 
-  // 🎯 Workspaces disponibles
-  const workspaces = [
+  // 🔄 Actualizar workspace cuando cambie defaultWorkspace
+  useEffect(() => {
+    console.log('🔍 DocumentUpload initialized with:', {
+      defaultWorkspace,
+      user_workspace: user?.workspace,
+      initial_fileMetadata_workspace: fileMetadata.workspace
+    });
+
+    if (defaultWorkspace) {
+      setFileMetadata(prev => ({
+        ...prev,
+        workspace: defaultWorkspace
+      }));
+    }
+  }, [defaultWorkspace]);
+
+  // 🐛 Debug effect para ver cambios en fileMetadata
+  useEffect(() => {
+    console.log('🔍 fileMetadata changed:', fileMetadata);
+  }, [fileMetadata]);
+
+  // 🎯 Workspaces disponibles (coinciden con el enum del backend)
+  const workspaces: Array<{ value: WorkspaceType; label: string }> = [
     { value: 'presidencia', label: 'Presidencia' },
     { value: 'cam', label: 'CAM' },
     { value: 'ampp', label: 'AMPP' },
@@ -192,6 +216,125 @@ export function DocumentUpload({
     }
   };
 
+  // 📤 Función para subir un archivo individual al backend
+  const uploadSingleFile = async (
+    file: File,
+    metadata: {
+      title: string;
+      description?: string;
+      workspace: WorkspaceType;
+      documentType?: DocumentType;
+      tags: string[];
+    },
+    onProgress?: (progress: number) => void
+  ): Promise<BackendDocument> => {
+    const formData = new FormData();
+    
+    // Adjuntar archivo
+    formData.append('file', file);
+    
+    // Adjuntar metadatos según el formato del backend
+    console.log('📤 Uploading with metadata:', {
+      title: metadata.title,
+      description: metadata.description,
+      workspace: metadata.workspace,
+      workspaceType: typeof metadata.workspace,
+      tags: metadata.tags
+    });
+    
+    // 🐛 Debug FormData - Verificar valores antes de agregar
+    console.log('🔍 Metadata values before FormData:', {
+      title: metadata.title,
+      titleType: typeof metadata.title,
+      titleValid: !!metadata.title,
+      description: metadata.description,
+      workspace: metadata.workspace,
+      workspaceType: typeof metadata.workspace,
+      workspaceValid: !!metadata.workspace,
+      tags: metadata.tags
+    });
+
+    // ⚠️ Validar que tenemos los campos requeridos
+    if (!metadata.title) {
+      throw new Error('Title is required but is missing');
+    }
+    if (!metadata.workspace) {
+      throw new Error('Workspace is required but is missing');
+    }
+
+    // ✅ Agregar campos con validación
+    formData.append('title', metadata.title);
+    if (metadata.description && metadata.description.trim()) {
+      formData.append('description', metadata.description);
+    }
+    formData.append('workspace', metadata.workspace);
+    
+    // 🎯 Combinar tipo de documento + tags adicionales
+    const finalTags = metadata.documentType 
+      ? [metadata.documentType, ...metadata.tags]
+      : metadata.tags;
+    
+    if (finalTags.length > 0) {
+      formData.append('tags', finalTags.join(','));
+    }
+    
+    // 🐛 Verificar que los datos se agregaron correctamente
+    console.log('📋 FormData entries after appending:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`  ${key}: ${value} (${typeof value})`);
+    }
+
+    // Hacer petición al backend
+    const response = await fetch('/api/documents', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Error ${response.status}: ${response.statusText}`;
+      
+      // Intentar parsear JSON solo si el content-type es JSON
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.details || errorData.error || errorMessage;
+        } catch (jsonError) {
+          // Si falla el parsing JSON, usar el mensaje de status HTTP
+          console.warn('Failed to parse error response as JSON:', jsonError);
+        }
+      } else {
+        // Si no es JSON, intentar leer como texto
+        try {
+          const errorText = await response.text();
+          if (errorText.trim()) {
+            errorMessage = errorText;
+          }
+        } catch (textError) {
+          console.warn('Failed to read error response as text:', textError);
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    // Parsear respuesta exitosa
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('El servidor no devolvió una respuesta JSON válida');
+    }
+
+    try {
+      const result = await response.json();
+      return result.data;
+    } catch (jsonError) {
+      throw new Error('Error al procesar la respuesta del servidor: respuesta JSON inválida');
+    }
+  };
+
   // 🚀 Procesar subida
   const handleUpload = async () => {
     if (!onUpload || uploadFiles.length === 0) return;
@@ -200,40 +343,91 @@ export function DocumentUpload({
     if (validFiles.length === 0) return;
 
     setIsUploading(true);
+    const uploadedDocuments: BackendDocument[] = [];
 
     try {
-      // Si solo hay un archivo, usar los metadatos del modal
-      if (validFiles.length === 1) {
-        const uploadData: UploadFile[] = [{
-          file: validFiles[0].file,
-          title: fileMetadata.title || validFiles[0].file.name,
-          description: fileMetadata.description,
-          workspace: fileMetadata.workspace as any,
-          tags: fileMetadata.tags
-        }];
+      // 📤 Subir archivos uno por uno según el formato del backend
+      for (let i = 0; i < validFiles.length; i++) {
+        const uploadFile = validFiles[i];
+        
+        // Actualizar progreso
+        setUploadFiles(prev => 
+          prev.map(f => 
+            f.id === uploadFile.id 
+              ? { ...f, status: 'uploading', progress: 0 }
+              : f
+          )
+        );
 
-        await onUpload(uploadData);
-      } else {
-        // Para múltiples archivos, usar nombres de archivo como títulos
-        const uploadData: UploadFile[] = validFiles.map(uploadFile => ({
-          file: uploadFile.file,
-          title: uploadFile.file.name,
-          description: '',
-          workspace: fileMetadata.workspace as any,
-          tags: []
-        }));
+        try {
+          // 🐛 Debug el estado actual de fileMetadata antes del upload
+          console.log('🔍 Current fileMetadata state:', {
+            fileMetadata,
+            uploadFiles_length: uploadFiles.length,
+            defaultWorkspace,
+            user_workspace: user?.workspace
+          });
 
-        await onUpload(uploadData);
+          const metadata = {
+            title: uploadFiles.length === 1 
+              ? (fileMetadata.title || uploadFile.file.name.replace(/\.[^/.]+$/, ''))
+              : uploadFile.file.name.replace(/\.[^/.]+$/, ''),
+            description: uploadFiles.length === 1 ? fileMetadata.description : undefined,
+            workspace: fileMetadata.workspace as WorkspaceType,
+            documentType: uploadFiles.length === 1 ? fileMetadata.documentType : undefined,
+            tags: uploadFiles.length === 1 ? fileMetadata.tags : []
+          };
+
+          console.log('🔍 Generated metadata for upload:', metadata);
+
+          const document = await uploadSingleFile(uploadFile.file, metadata,
+            (progress) => {
+              setUploadFiles(prev => 
+                prev.map(f => 
+                  f.id === uploadFile.id 
+                    ? { ...f, progress }
+                    : f
+                )
+              );
+            }
+          );
+
+          uploadedDocuments.push(document);
+          
+          // Marcar como exitoso
+          setUploadFiles(prev => 
+            prev.map(f => 
+              f.id === uploadFile.id 
+                ? { ...f, status: 'success', progress: 100 }
+                : f
+            )
+          );
+        } catch (error) {
+          // Marcar como error
+          setUploadFiles(prev => 
+            prev.map(f => 
+              f.id === uploadFile.id 
+                ? { ...f, status: 'error', error: error instanceof Error ? error.message : 'Error desconocido' }
+                : f
+            )
+          );
+        }
       }
 
-      // Limpiar archivos después de subida exitosa
-      setUploadFiles([]);
-      setFileMetadata({
-        title: '',
-        description: '',
-        workspace: defaultWorkspace || user?.workspace || 'presidencia',
-        tags: []
-      });
+      // ✅ Solo llamar onUpload si hay documentos subidos exitosamente
+      if (uploadedDocuments.length > 0) {
+        await onUpload(uploadedDocuments);
+        
+        // Limpiar archivos después de subida exitosa
+        setUploadFiles([]);
+        setFileMetadata({
+          title: '',
+          description: '',
+          workspace: defaultWorkspace || (user?.workspace as WorkspaceType) || 'presidencia',
+          documentType: undefined,
+          tags: []
+        });
+      }
       
     } catch (error) {
       console.error('Error uploading files:', error);
@@ -245,10 +439,21 @@ export function DocumentUpload({
 
   // 🎯 Abrir modal de metadatos
   const openMetadataModal = () => {
+    console.log('🔍 Opening metadata modal:', {
+      uploadFiles_length: uploadFiles.length,
+      current_fileMetadata: fileMetadata,
+      first_file_name: uploadFiles[0]?.file.name,
+      defaultWorkspace,
+      user_workspace: user?.workspace
+    });
+
     if (uploadFiles.length === 1) {
+      const newTitle = uploadFiles[0].file.name.replace(/\.[^/.]+$/, '');
+      console.log('🔍 Setting title for single file:', newTitle);
+      
       setFileMetadata(prev => ({
         ...prev,
-        title: uploadFiles[0].file.name.replace(/\.[^/.]+$/, '') // Quitar extensión
+        title: newTitle
       }));
     }
     setShowMetadataModal(true);
@@ -261,10 +466,10 @@ export function DocumentUpload({
     <div className={cn('space-y-4', className)}>
       {/* 📤 Zona de drop */}
       <Card className={cn(
-        'border-2 border-dashed transition-colors',
+        'border-2 border-dashed transition-colors bg-card',
         isUploading && 'pointer-events-none opacity-50'
       )}>
-        <CardContent className="p-8">
+        <CardContent className="p-8 bg-card">
           <div className="text-center cursor-pointer">
             <input 
               type="file"
@@ -277,7 +482,7 @@ export function DocumentUpload({
             />
             <label htmlFor="file-upload" className="cursor-pointer">
               <div className="space-y-4">
-                <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
                   <Upload className="w-8 h-8 text-primary" />
                 </div>
                 
@@ -323,7 +528,7 @@ export function DocumentUpload({
                       Subir archivos
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="document-upload-dialog">
                     <DialogHeader>
                       <DialogTitle>Configurar documento</DialogTitle>
                       <DialogDescription>
@@ -365,19 +570,45 @@ export function DocumentUpload({
                         <Label htmlFor="workspace">Espacio de trabajo</Label>
                         <Select
                           value={fileMetadata.workspace}
-                          onValueChange={(value) => setFileMetadata(prev => ({ ...prev, workspace: value }))}
+                          onValueChange={(value: WorkspaceType) => setFileMetadata(prev => ({ ...prev, workspace: value }))}
                         >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-solid border shadow-lg">
                             {workspaces.map((workspace) => (
-                              <SelectItem key={workspace.value} value={workspace.value}>
+                              <SelectItem key={workspace.value} value={workspace.value} className="bg-solid hover:bg-accent text-foreground">
                                 {workspace.label}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      {/* 📄 Tipo de Documento */}
+                      <DocumentTypeSelector
+                        workspace={fileMetadata.workspace}
+                        value={fileMetadata.documentType}
+                        onValueChange={(type) => setFileMetadata(prev => ({ ...prev, documentType: type }))}
+                        showDescription={true}
+                        showRetentionInfo={true}
+                      />
+
+                      {/* 🏷️ Tags adicionales */}
+                      <div className="space-y-2">
+                        <Label htmlFor="tags">Tags adicionales (opcional)</Label>
+                        <Input
+                          id="tags"
+                          value={fileMetadata.tags.join(', ')}
+                          onChange={(e) => {
+                            const tags = e.target.value.split(',').map(tag => tag.trim()).filter(Boolean);
+                            setFileMetadata(prev => ({ ...prev, tags }));
+                          }}
+                          placeholder="Etiqueta1, Etiqueta2, Etiqueta3..."
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Separar por comas. El tipo de documento se agrega automáticamente.
+                        </p>
                       </div>
                     </div>
 
@@ -413,7 +644,7 @@ export function DocumentUpload({
             {uploadFiles.map((uploadFile) => (
               <div
                 key={uploadFile.id}
-                className="flex items-center gap-3 p-3 border rounded-lg"
+                className="flex items-center gap-3 p-3 border rounded-lg bg-card"
               >
                 {/* 🎨 Preview/Icono */}
                 <div className="flex-shrink-0">

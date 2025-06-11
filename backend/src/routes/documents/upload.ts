@@ -73,9 +73,61 @@ export async function uploadRoute(fastify: FastifyInstance): Promise<void> {
           })
         }
 
-        // 📦 Procesar datos multipart
-        const data = await request.file()
-        if (!data) {
+        // 📦 Procesar datos multipart con approach manual y robusto
+        const parts = request.parts()
+        const formData: Record<string, string> = {}
+        let uploadedFile: { filename: string; mimetype: string; buffer: Buffer } | null = null
+
+        // 🔄 Procesar partes una por una sin await en el loop
+        try {
+          const partsArray = []
+          for await (const part of parts) {
+            partsArray.push(part)
+          }
+
+          console.log('🔍 Total parts received:', partsArray.length)
+
+          // Procesar cada parte
+          for (const part of partsArray) {
+            console.log('🔍 Processing part:', {
+              type: part.type,
+              fieldname: part.fieldname
+            })
+
+            if (part.type === 'file') {
+              const buffer = await part.toBuffer()
+              uploadedFile = {
+                filename: part.filename || 'unknown',
+                mimetype: part.mimetype || 'application/octet-stream',
+                buffer
+              }
+              console.log('📁 File processed:', {
+                filename: uploadedFile.filename,
+                mimetype: uploadedFile.mimetype,
+                size: buffer.length
+              })
+            } else {
+              // Campo de texto
+              const value = part.value as string
+              formData[part.fieldname] = value
+              console.log('📝 Field processed:', {
+                fieldname: part.fieldname,
+                value: value,
+                valueType: typeof value
+              })
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error processing multipart:', error)
+          return reply.status(400).send({
+            success: false,
+            error: 'Invalid multipart data',
+            details: 'Failed to process the multipart request'
+          })
+        }
+
+        // 📁 Validar que se subió un archivo
+        if (!uploadedFile) {
           return reply.status(400).send({
             success: false,
             error: 'File is required',
@@ -83,16 +135,35 @@ export async function uploadRoute(fastify: FastifyInstance): Promise<void> {
           })
         }
 
-        // 📋 Validar campos del formulario
-        const fields = data.fields as any
+        // 🐛 Debug - Ver todo lo que procesamos
+        console.log('🔍 Final processed data:', {
+          formData,
+          formDataKeys: Object.keys(formData),
+          title: formData.title,
+          description: formData.description,
+          workspace: formData.workspace,
+          tags: formData.tags,
+          fileInfo: {
+            filename: uploadedFile.filename,
+            mimetype: uploadedFile.mimetype,
+            size: uploadedFile.buffer.length
+          }
+        });
+        
         const validationResult = uploadSchema.safeParse({
-          title: fields?.title?.value,
-          description: fields?.description?.value,
-          workspace: fields?.workspace?.value,
-          tags: fields?.tags?.value
+          title: formData.title,
+          description: formData.description,
+          workspace: formData.workspace,
+          tags: formData.tags
         })
 
         if (!validationResult.success) {
+          // 🐛 Debug - Ver el error específico de validación
+          console.log('❌ Validation failed:', {
+            errors: validationResult.error.errors,
+            formattedErrors: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+          });
+          
           return reply.status(400).send({
             success: false,
             error: 'Validation error',
@@ -101,9 +172,18 @@ export async function uploadRoute(fastify: FastifyInstance): Promise<void> {
         }
 
         const { title, description, workspace, tags } = validationResult.data
+        
+        // 🐛 Debug - Validación exitosa
+        console.log('✅ Validation successful:', {
+          title,
+          description,
+          workspace,
+          workspaceType: typeof workspace,
+          tags
+        });
 
         // 📁 Validar archivo
-        if (!data.filename) {
+        if (!uploadedFile.filename) {
           return reply.status(400).send({
             success: false,
             error: 'Invalid file',
@@ -111,8 +191,8 @@ export async function uploadRoute(fastify: FastifyInstance): Promise<void> {
           })
         }
 
-        // 📏 Obtener tamaño del archivo
-        const buffer = await data.toBuffer()
+        // 📏 Usar el buffer que ya tenemos en memoria
+        const buffer = uploadedFile.buffer
         const maxSize = 50 * 1024 * 1024 // 50MB
         
         if (buffer.length > maxSize) {
@@ -146,8 +226,8 @@ export async function uploadRoute(fastify: FastifyInstance): Promise<void> {
             }
           },
           buffer,
-          data.filename,
-          data.mimetype || 'application/octet-stream'
+          uploadedFile.filename,
+          uploadedFile.mimetype || 'application/octet-stream'
         )
 
         // ✅ Respuesta exitosa

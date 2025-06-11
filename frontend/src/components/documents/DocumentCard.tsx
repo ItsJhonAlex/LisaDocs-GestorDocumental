@@ -14,6 +14,8 @@ import { Badge } from '@/components/ui/badge';
 
 import { DocumentStatus } from './DocumentStatus';
 import { DocumentActions, DocumentQuickActions } from './DocumentActions';
+import { DocumentTypeBadge } from './DocumentTypeSelector';
+import { getDocumentTypeFromTags } from '@/types/document';
 import { cn } from '@/lib/utils';
 
 // 🎯 Tipos para el documento
@@ -125,6 +127,7 @@ export function DocumentCard({
   };
 
   const WorkspaceIcon = getWorkspaceIcon(document.workspace);
+  const documentType = getDocumentTypeFromTags(document.tags || []);
 
   // 🎨 Renderizado compacto
   if (variant === 'compact') {
@@ -140,7 +143,12 @@ export function DocumentCard({
 
         {/* 📝 Información del documento */}
         <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
           <h4 className="font-medium truncate">{document.title}</h4>
+            {documentType && (
+              <DocumentTypeBadge type={documentType} size="sm" />
+            )}
+          </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>{formatFileSize(document.fileSize)}</span>
             <span>•</span>
@@ -176,7 +184,12 @@ export function DocumentCard({
             {getFileIcon(document.mimeType)}
           </div>
           <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1">
             <h4 className="font-medium truncate">{document.title}</h4>
+              {documentType && (
+                <DocumentTypeBadge type={documentType} size="sm" />
+              )}
+            </div>
             <p className="text-sm text-muted-foreground truncate">
               {document.fileName}
             </p>

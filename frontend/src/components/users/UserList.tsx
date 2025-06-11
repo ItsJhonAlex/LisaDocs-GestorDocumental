@@ -297,15 +297,15 @@ export function UserList() {
                   <SelectTrigger className="bg-background border text-foreground">
                     <SelectValue placeholder="Todos los roles" />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border shadow-lg">
-                    <SelectItem value="all" className="bg-popover hover:bg-accent text-popover-foreground">
+                  <SelectContent className="bg-solid border shadow-lg">
+                    <SelectItem value="all" className="bg-solid hover:bg-accent text-foreground">
                       Todos los roles
                     </SelectItem>
                     {ROLE_OPTIONS.map(role => (
                       <SelectItem 
                         key={role.value} 
                         value={role.value}
-                        className="bg-popover hover:bg-accent text-popover-foreground"
+                        className="bg-solid hover:bg-accent text-foreground"
                       >
                         {role.label}
                       </SelectItem>
@@ -323,15 +323,15 @@ export function UserList() {
                   <SelectTrigger className="bg-background border text-foreground">
                     <SelectValue placeholder="Todos los workspaces" />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border shadow-lg">
-                    <SelectItem value="all" className="bg-popover hover:bg-accent text-popover-foreground">
+                  <SelectContent className="bg-solid border shadow-lg">
+                    <SelectItem value="all" className="bg-solid hover:bg-accent text-foreground">
                       Todos los workspaces
                     </SelectItem>
                     {WORKSPACE_OPTIONS.map(workspace => (
                       <SelectItem 
                         key={workspace.value} 
                         value={workspace.value}
-                        className="bg-popover hover:bg-accent text-popover-foreground"
+                        className="bg-solid hover:bg-accent text-foreground"
                       >
                         {workspace.label}
                       </SelectItem>
@@ -349,14 +349,14 @@ export function UserList() {
                   <SelectTrigger className="bg-background border text-foreground">
                     <SelectValue placeholder="Todos los estados" />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border shadow-lg">
-                    <SelectItem value="all" className="bg-popover hover:bg-accent text-popover-foreground">
+                  <SelectContent className="bg-solid border shadow-lg">
+                    <SelectItem value="all" className="bg-solid hover:bg-accent text-foreground">
                       Todos
                     </SelectItem>
-                    <SelectItem value="true" className="bg-popover hover:bg-accent text-popover-foreground">
+                    <SelectItem value="true" className="bg-solid hover:bg-accent text-foreground">
                       Activos
                     </SelectItem>
-                    <SelectItem value="false" className="bg-popover hover:bg-accent text-popover-foreground">
+                    <SelectItem value="false" className="bg-solid hover:bg-accent text-foreground">
                       Inactivos
                     </SelectItem>
                   </SelectContent>
@@ -372,11 +372,11 @@ export function UserList() {
                   <SelectTrigger className="bg-background border text-foreground">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border shadow-lg">
-                    <SelectItem value="10" className="bg-popover hover:bg-accent text-popover-foreground">10</SelectItem>
-                    <SelectItem value="25" className="bg-popover hover:bg-accent text-popover-foreground">25</SelectItem>
-                    <SelectItem value="50" className="bg-popover hover:bg-accent text-popover-foreground">50</SelectItem>
-                    <SelectItem value="100" className="bg-popover hover:bg-accent text-popover-foreground">100</SelectItem>
+                  <SelectContent className="bg-solid border shadow-lg">
+                    <SelectItem value="10" className="bg-solid hover:bg-accent text-foreground">10</SelectItem>
+                    <SelectItem value="25" className="bg-solid hover:bg-accent text-foreground">25</SelectItem>
+                    <SelectItem value="50" className="bg-solid hover:bg-accent text-foreground">50</SelectItem>
+                    <SelectItem value="100" className="bg-solid hover:bg-accent text-foreground">100</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -420,7 +420,7 @@ export function UserList() {
         <CardContent className="p-0 bg-card">
           <div className="relative">
             {loading && (
-              <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
+              <div className="absolute inset-0 loading-overlay flex items-center justify-center z-10">
                 <div className="flex items-center space-x-2 text-foreground">
                   <RefreshCw className="h-6 w-6 animate-spin" />
                   <span className="font-medium">Cargando usuarios...</span>
@@ -429,7 +429,7 @@ export function UserList() {
             )}
             
             <Table>
-              <TableHeader className="bg-muted/50">
+              <TableHeader className="bg-muted-solid">
                 <TableRow className="border-b">
                   <TableHead className="w-12">
                     <Checkbox
@@ -459,7 +459,7 @@ export function UserList() {
                   </TableRow>
                 ) : (
                   users.map((user) => (
-                    <TableRow key={user.id} className="border-b hover:bg-muted/30 transition-colors">
+                    <TableRow key={user.id} className="border-b hover:bg-muted/50 transition-colors">
                       <TableCell>
                         <Checkbox
                           checked={selectedUsers.includes(user.id)}

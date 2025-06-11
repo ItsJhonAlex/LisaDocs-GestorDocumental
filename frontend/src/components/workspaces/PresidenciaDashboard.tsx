@@ -30,6 +30,7 @@ import {
 } from '@/components/documents';
 
 import { useAuth } from '@/hooks/useAuth';
+import type { BackendDocument } from '@/hooks/useBackendDocuments';
 
 // 🎯 Tipos específicos para Presidencia
 interface PresidenciaStats {
@@ -251,36 +252,31 @@ export function PresidenciaDashboard() {
   }, [documents, filters, activeTab]);
 
   // 🎯 Gestores de eventos
-  const handleUpload = async (files: Array<{
-    file: File;
-    title: string;
-    description?: string;
-    workspace: string;
-    tags?: string[];
-  }>) => {
+  const handleUpload = async (backendDocuments: BackendDocument[]) => {
     try {
-      console.log('Uploading files to Presidencia:', files);
+      console.log('📤 Documents uploaded to Presidencia:', backendDocuments);
       
-      const newDocs: Document[] = files.map((fileData, index) => ({
-        id: `pres-new-${Date.now()}-${index}`,
-        title: fileData.title,
-        description: fileData.description,
-        fileName: fileData.file.name,
-        fileSize: fileData.file.size,
-        mimeType: fileData.file.type,
-        status: 'draft' as const,
-        workspace: 'presidencia',
-        tags: fileData.tags || [],
-        createdBy: 'current-user',
-        createdByName: user?.fullName || 'Usuario',
-        createdAt: new Date().toISOString(),
-        fileUrl: `/uploads/presidencia/${fileData.file.name}`
+      // Convertir BackendDocument a formato local Document
+      const newDocs: Document[] = backendDocuments.map(doc => ({
+        id: doc.id,
+        title: doc.title,
+        description: doc.description,
+        fileName: doc.fileName,
+        fileSize: doc.fileSize,
+        mimeType: doc.mimeType,
+        status: doc.status,
+        workspace: doc.workspace,
+        tags: doc.tags || [],
+        createdBy: doc.createdByUser.id,
+        createdByName: doc.createdByUser.fullName,
+        createdAt: doc.createdAt,
+        fileUrl: `/api/documents/${doc.id}/download`
       }));
 
       setDocuments(prev => [...newDocs, ...prev]);
       setIsUploadOpen(false);
     } catch (error) {
-      console.error('Error uploading files:', error);
+      console.error('❌ Error handling uploaded documents:', error);
     }
   };
 
@@ -453,7 +449,7 @@ export function PresidenciaDashboard() {
                     Subir Documento
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto document-upload-dialog">
                   <DialogHeader>
                     <DialogTitle>Subir Documento a Presidencia</DialogTitle>
                     <DialogDescription>

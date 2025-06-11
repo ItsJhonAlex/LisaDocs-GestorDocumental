@@ -28,6 +28,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 
 import { DocumentStatus } from './DocumentStatus';
+import { DocumentTypeBadge } from './DocumentTypeSelector';
+import { DOCUMENT_TYPES, getDocumentTypesForWorkspace, type DocumentType, type WorkspaceType } from '@/types/document';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +38,7 @@ export interface DocumentFilters {
   search?: string;
   status?: DocumentStatus[];
   workspace?: string[];
+  documentType?: DocumentType[]; // 🆕 Filtro por tipo de documento
   fileType?: string[];
   createdBy?: string[];
   dateRange?: {
@@ -88,7 +91,7 @@ export function DocumentFilters({
 
     // Otros usuarios ven según sus permisos
     return allWorkspaces.filter(workspace => {
-      if (user?.workspaces?.includes(workspace.value)) return true;
+      if (user?.workspace === workspace.value) return true;
       
       // Presidentes y vicepresidentes pueden ver la mayoría
       if (hasAnyRole(['presidente', 'vicepresidente'])) {
@@ -146,6 +149,7 @@ export function DocumentFilters({
     if (filters.search) count++;
     if (filters.status?.length) count++;
     if (filters.workspace?.length) count++;
+    if (filters.documentType?.length) count++;
     if (filters.fileType?.length) count++;
     if (filters.createdBy?.length) count++;
     if (filters.dateRange) count++;
@@ -308,6 +312,33 @@ export function DocumentFilters({
                     </div>
                   </div>
 
+                  {/* 📄 Tipo de documento */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Tipo de Documento</Label>
+                    <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto">
+                      {Object.values(DOCUMENT_TYPES).map((type) => {
+                        const isSelected = filters.documentType?.includes(type);
+                        return (
+                          <Button
+                            key={type}
+                            variant={isSelected ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => {
+                              const currentTypes = filters.documentType || [];
+                              const newTypes = isSelected
+                                ? currentTypes.filter(t => t !== type)
+                                : [...currentTypes, type];
+                              updateFilter('documentType', newTypes.length ? newTypes : undefined);
+                            }}
+                            className="justify-start h-8"
+                          >
+                            <DocumentTypeBadge type={type} size="sm" />
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* 📁 Tipo de archivo */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Tipo de Archivo</Label>
@@ -422,6 +453,23 @@ export function DocumentFilters({
               </Badge>
             );
           })}
+
+          {filters.documentType?.map((docType) => (
+            <Badge key={docType} variant="secondary" className="gap-1">
+              <DocumentTypeBadge type={docType} size="sm" showIcon={false} />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const newTypes = filters.documentType?.filter(t => t !== docType);
+                  updateFilter('documentType', newTypes?.length ? newTypes : undefined);
+                }}
+                className="h-4 w-4 p-0 ml-1"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </Badge>
+          ))}
 
           <Button
             variant="ghost"

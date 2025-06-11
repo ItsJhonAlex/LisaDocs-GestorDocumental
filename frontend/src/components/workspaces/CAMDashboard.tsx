@@ -24,7 +24,9 @@ import {
   DocumentList,
   DocumentUpload,
   DocumentViewer,
-  DocumentStatusStats
+  DocumentFilters,
+  DocumentStatusStats,
+  type DocumentFiltersType
 } from '@/components/documents';
 
 // 🪝 Importar nuestro hook personalizado  
@@ -32,7 +34,8 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useAuth } from '@/hooks/useAuth';
 
 // 🎯 Importar tipos
-import type { Document, UploadFile } from '@/types/document';
+import type { Document } from '@/types/document';
+import type { BackendDocument } from '@/hooks/useBackendDocuments';
 
 // 🎯 Tipos específicos para CAM
 interface CAMStats {
@@ -121,16 +124,15 @@ export function CAMDashboard() {
   const filteredDocuments = getFilteredDocuments();
 
   // 🎯 Gestores de eventos
-  const handleUpload = async (files: UploadFile[]) => {
+  const handleUpload = async (backendDocuments: BackendDocument[]) => {
     try {
-      if (files.length === 1) {
-        await uploadDocument(files[0]);
-      } else {
-        await uploadMultipleDocuments(files);
-      }
+      console.log('📤 Documents uploaded to CAM:', backendDocuments);
+      
+      // Los documentos ya están subidos al backend, solo confirmamos
+      console.log('✅ Documents successfully uploaded to CAM workspace');
       setIsUploadOpen(false);
     } catch (error) {
-      console.error('Error uploading files to CAM:', error);
+      console.error('❌ Error handling uploaded documents:', error);
     }
   };
 
@@ -295,7 +297,7 @@ export function CAMDashboard() {
                     Subir Documento
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto document-upload-dialog">
                   <DialogHeader>
                     <DialogTitle>Subir Documento al CAM</DialogTitle>
                     <DialogDescription>

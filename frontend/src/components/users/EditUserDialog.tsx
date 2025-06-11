@@ -295,12 +295,12 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
                       <SelectTrigger className={`pl-9 bg-background border text-foreground ${errors.role ? 'border-destructive' : 'border-input'}`}>
                         <SelectValue placeholder="Seleccionar rol" />
                       </SelectTrigger>
-                      <SelectContent className="bg-popover border shadow-lg">
+                      <SelectContent className="bg-solid border shadow-lg">
                         {getAvailableRoles().map((role) => (
                           <SelectItem 
                             key={role.value} 
                             value={role.value}
-                            className="bg-popover hover:bg-accent text-popover-foreground"
+                            className="bg-solid hover:bg-accent text-foreground"
                           >
                             <div>
                               <div className="font-medium">{role.label}</div>
@@ -332,12 +332,12 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
                       <SelectTrigger className={`pl-9 bg-background border text-foreground ${errors.workspace ? 'border-destructive' : 'border-input'}`}>
                         <SelectValue placeholder="Seleccionar workspace" />
                       </SelectTrigger>
-                      <SelectContent className="bg-popover border shadow-lg">
+                      <SelectContent className="bg-solid border shadow-lg">
                         {WORKSPACE_OPTIONS.map((workspace) => (
                           <SelectItem 
                             key={workspace.value} 
                             value={workspace.value}
-                            className="bg-popover hover:bg-accent text-popover-foreground"
+                            className="bg-solid hover:bg-accent text-foreground"
                           >
                             <div>
                               <div className="font-medium">{workspace.label}</div>
@@ -357,7 +357,7 @@ export function EditUserDialog({ open, onOpenChange, user }: EditUserDialogProps
               {/* Estado del usuario */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium text-foreground">Estado del Usuario</Label>
-                <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-muted-solid">
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
                       <span className="font-medium text-foreground">Cuenta Activa</span>

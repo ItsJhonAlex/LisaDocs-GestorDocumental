@@ -21,6 +21,142 @@ export type UserRole =
   | 'intendente'
   | 'cf_member';
 
+// 📝 Tipos de Documentos según models.md
+export const DOCUMENT_TYPES = {
+  NOTA_INFORMATIVA: 'nota_informativa',
+  ACTA: 'acta', 
+  CERTIFICACION: 'certificacion',
+  INFORME: 'informe',
+  RESOLUCION: 'resolucion',
+  DECRETO: 'decreto',
+  DICTAMEN: 'dictamen',
+  PROPUESTA: 'propuesta',
+  MEMORIA: 'memoria',
+  COMUNICADO: 'comunicado'
+} as const;
+
+export type DocumentType = typeof DOCUMENT_TYPES[keyof typeof DOCUMENT_TYPES];
+
+// 📋 Metadatos de tipos de documentos
+export interface DocumentTypeMetadata {
+  label: string;
+  description: string;
+  icon: string;
+  color: string;
+  retentionMonths: number; // Tiempo antes de archivado automático
+  workspaces: WorkspaceType[]; // Workspaces donde aplica
+  requiredFields?: string[]; // Campos obligatorios adicionales
+}
+
+// 🎯 Configuración de tipos de documentos
+export const DOCUMENT_TYPE_CONFIG: Record<DocumentType, DocumentTypeMetadata> = {
+  [DOCUMENT_TYPES.NOTA_INFORMATIVA]: {
+    label: 'Nota Informativa',
+    description: 'Comunicaciones breves con información relevante',
+    icon: '📝',
+    color: 'blue',
+    retentionMonths: 12,
+    workspaces: ['presidencia', 'cam', 'ampp', 'intendencia', 'comisiones_cf']
+  },
+  [DOCUMENT_TYPES.ACTA]: {
+    label: 'Acta',
+    description: 'Documentos que registran reuniones y acuerdos oficiales',
+    icon: '📊',
+    color: 'green',
+    retentionMonths: 24,
+    workspaces: ['cam', 'ampp', 'comisiones_cf'],
+    requiredFields: ['participantes', 'acuerdos']
+  },
+  [DOCUMENT_TYPES.CERTIFICACION]: {
+    label: 'Certificación',
+    description: 'Documentos que validan o certifican situaciones específicas',
+    icon: '🏆',
+    color: 'amber',
+    retentionMonths: 60,
+    workspaces: ['presidencia', 'intendencia']
+  },
+  [DOCUMENT_TYPES.INFORME]: {
+    label: 'Informe',
+    description: 'Documentos detallados con análisis y conclusiones',
+    icon: '📋',
+    color: 'purple',
+    retentionMonths: 18,
+    workspaces: ['presidencia', 'cam', 'ampp', 'intendencia', 'comisiones_cf']
+  },
+  [DOCUMENT_TYPES.RESOLUCION]: {
+    label: 'Resolución',
+    description: 'Decisiones oficiales y resoluciones administrativas',
+    icon: '⚖️',
+    color: 'red',
+    retentionMonths: 36,
+    workspaces: ['presidencia', 'cam', 'ampp']
+  },
+  [DOCUMENT_TYPES.DECRETO]: {
+    label: 'Decreto',
+    description: 'Decretos y disposiciones oficiales',
+    icon: '📜',
+    color: 'indigo',
+    retentionMonths: 60,
+    workspaces: ['presidencia']
+  },
+  [DOCUMENT_TYPES.DICTAMEN]: {
+    label: 'Dictamen',
+    description: 'Opiniones técnicas y dictámenes especializados',
+    icon: '🔍',
+    color: 'teal',
+    retentionMonths: 24,
+    workspaces: ['comisiones_cf', 'intendencia']
+  },
+  [DOCUMENT_TYPES.PROPUESTA]: {
+    label: 'Propuesta',
+    description: 'Propuestas y proyectos para consideración',
+    icon: '💡',
+    color: 'orange',
+    retentionMonths: 12,
+    workspaces: ['cam', 'ampp', 'comisiones_cf']
+  },
+  [DOCUMENT_TYPES.MEMORIA]: {
+    label: 'Memoria',
+    description: 'Memorias anuales y documentos de gestión',
+    icon: '📚',
+    color: 'gray',
+    retentionMonths: 72,
+    workspaces: ['presidencia', 'intendencia', 'comisiones_cf']
+  },
+  [DOCUMENT_TYPES.COMUNICADO]: {
+    label: 'Comunicado',
+    description: 'Comunicados oficiales y públicos',
+    icon: '📢',
+    color: 'cyan',
+    retentionMonths: 6,
+    workspaces: ['presidencia']
+  }
+};
+
+// 🎯 Funciones de utilidad para tipos de documentos
+export const getDocumentTypeConfig = (type: DocumentType): DocumentTypeMetadata => {
+  return DOCUMENT_TYPE_CONFIG[type];
+};
+
+export const getDocumentTypesForWorkspace = (workspace: WorkspaceType): DocumentType[] => {
+  return Object.entries(DOCUMENT_TYPE_CONFIG)
+    .filter(([_, config]) => config.workspaces.includes(workspace))
+    .map(([type]) => type as DocumentType);
+};
+
+export const getDocumentTypeFromTags = (tags: string[]): DocumentType | null => {
+  const documentTypes = Object.values(DOCUMENT_TYPES);
+  const foundType = tags.find(tag => documentTypes.includes(tag as DocumentType));
+  return foundType as DocumentType || null;
+};
+
+export const createDocumentTags = (
+  type: DocumentType, 
+  additionalTags: string[] = []
+): string[] => {
+  return [type, ...additionalTags].filter(Boolean);
+};
+
 // 👤 Usuario simplificado para documentos
 export interface DocumentUser {
   id: string;
@@ -41,7 +177,7 @@ export interface Document {
   fileHash?: string;
   status: DocumentStatus;
   workspace: WorkspaceType;
-  tags: string[];
+  tags: string[]; // Incluye el tipo de documento + tags adicionales
   metadata: Record<string, any>;
   createdBy: string;
   createdByUser: DocumentUser;
@@ -50,6 +186,10 @@ export interface Document {
   expiresAt?: string;
   createdAt: string;
   updatedAt: string;
+  
+  // 🆕 Propiedades derivadas de tags
+  documentType?: DocumentType; // Se calcula desde tags
+  additionalTags?: string[]; // Tags que no son tipo de documento
 }
 
 // 📤 Datos para crear documento
@@ -71,17 +211,19 @@ export interface UpdateDocumentData {
 
 // 🔍 Filtros para documentos
 export interface DocumentFilters {
-  workspace?: WorkspaceType;
-  status?: DocumentStatus;
-  createdBy?: string;
   search?: string;
+  status?: DocumentStatus[];
+  workspace?: WorkspaceType[];
+  documentType?: DocumentType[]; // 🆕 Filtro por tipo
+  fileType?: string[];
+  createdBy?: string[];
+  dateRange?: {
+    from: Date;
+    to: Date;
+  };
   tags?: string[];
-  dateFrom?: string; // ISO string
-  dateTo?: string;   // ISO string
-  limit?: number;
-  offset?: number;
-  orderBy?: 'createdAt' | 'updatedAt' | 'title' | 'fileSize';
-  orderDirection?: 'asc' | 'desc';
+  sortBy?: 'created_at' | 'title' | 'file_size' | 'stored_at';
+  sortOrder?: 'asc' | 'desc';
 }
 
 // 📊 Paginación
@@ -111,8 +253,10 @@ export interface UploadFile {
   file: File;
   title: string;
   description?: string;
+  documentType: DocumentType; // 🆕 Obligatorio seleccionar tipo
   workspace: WorkspaceType;
-  tags?: string[];
+  tags: string[];
+  metadata?: Record<string, any>;
 }
 
 // 📤 Resultado de subida

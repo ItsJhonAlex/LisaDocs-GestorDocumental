@@ -62,7 +62,7 @@ export function Layout({ children, className }: LayoutProps) {
     <div className={cn("min-h-screen bg-background", className)}>
       {/* 🔄 Loading overlay para navegación */}
       {isNavigating && (
-        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center">
+        <div className="fixed inset-0 z-[100] loading-overlay flex items-center justify-center">
           <div className="text-center space-y-4">
             <LoadingSpinner 
               size="lg" 
@@ -79,7 +79,7 @@ export function Layout({ children, className }: LayoutProps) {
       {/* 📱 Overlay para móvil */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden sidebar-backdrop"
           onClick={handleOverlayClick}
           aria-hidden="true"
         />
@@ -100,7 +100,7 @@ export function Layout({ children, className }: LayoutProps) {
         <Header />
 
         {/* 🍞 Breadcrumbs */}
-        <div className="border-b bg-background/50 backdrop-blur-sm">
+        <div className="border-b bg-muted/30 breadcrumbs-container">
           <div className="container mx-auto px-4 py-3">
             <Breadcrumbs />
           </div>
@@ -155,14 +155,14 @@ export function AuthLayout({ children, className }: LayoutProps) {
       {/* 📱 Contenido */}
       <div className="relative z-10 w-full max-w-md mx-auto p-6">
         {/* 🎨 Card de fondo para el contenido */}
-        <div className="bg-card border border-border rounded-lg shadow-lg backdrop-blur-sm">
+        <div className="bg-card-solid border border-border rounded-lg shadow-medium">
           {children}
         </div>
       </div>
 
       {/* 🏷️ Branding sutil */}
       <div className="absolute bottom-4 left-4 right-4 text-center">
-        <div className="inline-flex items-center space-x-2 text-xs text-muted-foreground bg-background/80 px-3 py-1 rounded-full border border-border">
+        <div className="inline-flex items-center space-x-2 text-xs text-muted-foreground bg-solid px-3 py-1 rounded-full border border-border shadow-soft">
           <div className="w-2 h-2 bg-primary rounded-full"></div>
           <span>LisaDocs v1.0.0 - Sistema de Gestión Documental</span>
         </div>

@@ -53,12 +53,12 @@ export function RoleSelector({
           <SelectTrigger className="pl-9 bg-background border text-foreground">
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>
-          <SelectContent className="bg-popover border shadow-lg">
+          <SelectContent className="bg-solid border shadow-lg">
             {ROLE_OPTIONS.map((role) => (
               <SelectItem 
                 key={role.value} 
                 value={role.value}
-                className="bg-popover hover:bg-accent text-popover-foreground cursor-pointer"
+                className="bg-solid hover:bg-accent text-foreground cursor-pointer"
               >
                 <div>
                   <div className="font-medium">{role.label}</div>
