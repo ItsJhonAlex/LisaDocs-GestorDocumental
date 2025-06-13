@@ -31,6 +31,7 @@ import {
 
 import { useAuth } from '@/hooks/useAuth';
 import type { BackendDocument } from '@/hooks/useBackendDocuments';
+import { downloadDocumentWithCorrectName } from '@/utils/documentUtils';
 
 // 🎯 Tipos específicos para Comisiones CF
 interface ComisionesStats {
@@ -227,16 +228,48 @@ export function ComisionesDashboard() {
     const loadDocuments = async () => {
       setIsLoading(true);
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const comisionesDocuments = mockComisionesDocuments.filter(doc => 
-          doc.workspace === 'comisiones_cf'
-        );
+        // 📡 Llamada real al backend
+        const response = await fetch('/api/documents?workspace=comisiones_cf', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al cargar documentos');
+        }
+
+        const result = await response.json();
+        const backendDocuments: BackendDocument[] = result.data.documents;
+
+        // Convertir BackendDocument a formato local Document
+        const comisionesDocuments: Document[] = backendDocuments.map(doc => ({
+          id: doc.id,
+          title: doc.title,
+          description: doc.description,
+          fileName: doc.fileName,
+          fileSize: doc.fileSize,
+          mimeType: doc.mimeType,
+          status: doc.status,
+          workspace: doc.workspace,
+          tags: doc.tags || [],
+          createdBy: doc.createdByUser.id,
+          createdByUser: doc.createdByUser,
+          createdAt: doc.createdAt,
+          fileUrl: `/api/documents/${doc.id}/download`
+        }));
         
         setDocuments(comisionesDocuments);
         setFilteredDocuments(comisionesDocuments);
       } catch (error) {
-        console.error('Error loading Comisiones documents:', error);
+        console.error('Error loading comisiones documents:', error);
+        // 🔄 Fallback a documentos mock en caso de error
+        const comisionesDocuments = mockComisionesDocuments.filter(doc => 
+          doc.workspace === 'comisiones_cf'
+        );
+        setDocuments(comisionesDocuments);
+        setFilteredDocuments(comisionesDocuments);
       } finally {
         setIsLoading(false);
       }
@@ -325,20 +358,14 @@ export function ComisionesDashboard() {
 
   const handleDownload = async (documentId: string) => {
     const doc = documents.find(d => d.id === documentId);
-    if (doc) {
+    if (!doc) return;
+
+    try {
       console.log('Downloading Comisiones document:', doc.fileName);
-      try {
-        // 📥 Usar función que extrae nombre correcto del backend
-        const { downloadDocumentWithCorrectName } = await import('@/utils/documentUtils');
-        await downloadDocumentWithCorrectName(doc.fileUrl, doc.fileName);
-      } catch (error) {
-        console.error('❌ Error downloading document:', error);
-        // Fallback a descarga directa si falla
-        const link = document.createElement('a');
-        link.href = doc.fileUrl;
-        link.download = doc.fileName;
-        link.click();
-      }
+      await downloadDocumentWithCorrectName(doc.fileUrl, doc.fileName);
+    } catch (error) {
+      console.error('❌ Error downloading document:', error);
+      // TODO: Mostrar toast de error al usuario
     }
   };
 
@@ -366,15 +393,7 @@ export function ComisionesDashboard() {
     }
   };
 
-  const handleDelete = async (documentId: string) => {
-    if (confirm('¿Estás seguro de que quieres eliminar este documento de las Comisiones?')) {
-      try {
-        setDocuments(prev => prev.filter(doc => doc.id !== documentId));
-      } catch (error) {
-        console.error('Error deleting document:', error);
-      }
-    }
-  };
+
 
   const handleEdit = (documentId: string) => {
     console.log('Edit Comisiones document:', documentId);
@@ -386,74 +405,6 @@ export function ComisionesDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* 📊 Estadísticas de Comisiones CF */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Documentos</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalDocuments}</div>
-            <p className="text-xs text-muted-foreground">
-              En Comisiones CF
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Comisiones</CardTitle>
-            <GitBranch className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeCommissions}</div>
-            <p className="text-xs text-muted-foreground">
-              Activas CF1-CF8
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Descargas</CardTitle>
-            <Download className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalDownloads}</div>
-            <p className="text-xs text-muted-foreground">
-              Total acumulado
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Miembros</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeMembers}</div>
-            <p className="text-xs text-muted-foreground">
-              Activos
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Informes</CardTitle>
-            <CheckSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingReports}</div>
-            <p className="text-xs text-muted-foreground">
-              Pendientes
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* 📊 Estadísticas de estado */}
       <Card>
         <CardHeader>
@@ -581,8 +532,12 @@ export function ComisionesDashboard() {
                     onDownload={handleDownload}
                     onArchive={canArchiveOthers ? handleArchive : undefined}
                     onRestore={canArchiveOthers ? handleRestore : undefined}
-                    onDeleteSuccess={canManage ? (id) => handleDelete(id) : undefined}
-                    onDeleteError={canManage ? (error) => console.error('Delete error:', error) : undefined}
+                    onDeleteSuccess={(documentId) => {
+                      setDocuments(prev => prev.filter(doc => doc.id !== documentId));
+                    }}
+                    onDeleteError={(error) => {
+                      console.error('Error deleting document:', error);
+                    }}
                     onEdit={handleEdit}
                     onShare={handleShare}
                     currentPage={currentPage}
