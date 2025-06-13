@@ -10,7 +10,7 @@ const getApiBaseUrl = () => {
   }
   
   // En producción, usar la URL completa del backend
-  return import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+  return import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();

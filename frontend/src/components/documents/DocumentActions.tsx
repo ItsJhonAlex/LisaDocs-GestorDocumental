@@ -7,9 +7,9 @@ import {
   Edit, 
   Eye, 
   MoreHorizontal,
-  Share,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Settings
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -20,29 +20,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-// TODO: Descomentar cuando esté disponible el componente
-// import {
-//   AlertDialog,
-//   AlertDialogAction,
-//   AlertDialogCancel,
-//   AlertDialogContent,
-//   AlertDialogDescription,
-//   AlertDialogFooter,
-//   AlertDialogHeader,
-//   AlertDialogTitle,
-// } from '@/components/ui/alert-dialog';
 
 import { DocumentStatus } from './DocumentStatus';
+import { DocumentDeleteDialog } from './DocumentDeleteDialog';
+import { DocumentStatusChanger } from './DocumentStatusChanger';
 import { useAuth } from '@/hooks/useAuth';
+import { useDeleteDocument } from '@/hooks/useDeleteDocument';
+import { useDocumentStatus } from '@/hooks/useDocumentStatus';
 import { cn } from '@/lib/utils';
+import type { DocumentStatus as DocumentStatusType } from '@/hooks/useBackendDocuments';
+import { downloadDocumentWithCorrectName } from '@/utils/documentUtils';
 
 // 🎯 Tipos para el documento y acciones
 interface Document {
   id: string;
   title: string;
-  status: DocumentStatus;
-  fileUrl: string;
   fileName: string;
+  fileSize: number;
+  status: DocumentStatusType;
+  fileUrl: string;
   createdBy: string;
   workspace: string;
 }
@@ -52,10 +48,12 @@ interface DocumentActionsProps {
   onDownload?: (documentId: string) => void;
   onArchive?: (documentId: string) => void;
   onRestore?: (documentId: string) => void;
-  onDelete?: (documentId: string) => void;
   onEdit?: (documentId: string) => void;
   onView?: (documentId: string) => void;
-  onShare?: (documentId: string) => void;
+
+  onDeleteSuccess?: (documentId: string) => void;
+  onDeleteError?: (error: string) => void;
+  onStatusChange?: (documentId: string, newStatus: string) => void;
   className?: string;
   variant?: 'dropdown' | 'inline';
 }
@@ -71,26 +69,46 @@ export function DocumentActions({
   onDownload,
   onArchive,
   onRestore,
-  onDelete,
   onEdit,
   onView,
-  onShare,
+
+  onDeleteSuccess,
+  onDeleteError,
+  onStatusChange,
   className,
   variant = 'dropdown'
 }: DocumentActionsProps) {
   const { user, hasRole, hasAnyRole } = useAuth();
+  const { isDeletingDocument, canDeleteDocument } = useDeleteDocument();
+  const documentStatusHook = useDocumentStatus({
+    onSuccess: (documentId, newStatus) => {
+      console.log('✅ Status changed successfully:', { documentId, newStatus });
+      onStatusChange?.(documentId, newStatus);
+    },
+    onError: (error) => {
+      console.error('❌ Status change error:', error);
+      // TODO: Mostrar toast de error
+    }
+  });
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // 🔐 Verificar permisos del usuario
   const isOwner = user?.id === document.createdBy;
   const canArchiveOthers = hasAnyRole(['administrador', 'presidente']) || 
     (hasAnyRole(['secretario_cam', 'secretario_ampp', 'secretario_cf']) && 
-     user?.workspaces?.includes(document.workspace));
-  const canDelete = isOwner || hasRole('administrador');
+     user?.workspace === document.workspace);
+  const canDelete = canDeleteDocument({
+    createdBy: document.createdBy,
+    status: document.status,
+    workspace: document.workspace
+  });
   const canEdit = isOwner && document.status === 'draft';
   const canArchive = (isOwner || canArchiveOthers) && document.status === 'stored';
   const canRestore = (isOwner || canArchiveOthers) && document.status === 'archived';
+
+  const isDeleting = isDeletingDocument(document.id);
 
   // 🎯 Manejar acciones con loading
   const handleAction = async (action: () => void | Promise<void>) => {
@@ -103,24 +121,36 @@ export function DocumentActions({
   };
 
   // 📥 Acción de descarga
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (onDownload) {
       handleAction(() => onDownload(document.id));
     } else {
-      // Descarga directa del archivo usando window.document
-      const link = window.document.createElement('a');
-      link.href = document.fileUrl;
-      link.download = document.fileName;
-      link.click();
+      // Descarga directa del archivo con nombre correcto del backend
+      try {
+        await downloadDocumentWithCorrectName(document.fileUrl, document.fileName);
+      } catch (error) {
+        console.error('❌ Error downloading document:', error);
+        // TODO: Mostrar toast de error al usuario
+      }
     }
   };
 
-  // 🗑️ Acción de eliminación
-  const handleDelete = () => {
-    if (onDelete) {
-      handleAction(() => onDelete(document.id));
-    }
+  // 🗑️ Abrir diálogo de eliminación
+  const handleDeleteClick = () => {
+    setShowDeleteDialog(true);
+  };
+
+  // ✅ Manejar éxito de eliminación
+  const handleDeleteSuccess = (documentId: string) => {
+    console.log('✅ Document deleted successfully:', documentId);
+    onDeleteSuccess?.(documentId);
     setShowDeleteDialog(false);
+  };
+
+  // ❌ Manejar error de eliminación
+  const handleDeleteError = (error: string) => {
+    console.error('❌ Delete error:', error);
+    onDeleteError?.(error);
   };
 
   // 📋 Copiar enlace
@@ -136,71 +166,96 @@ export function DocumentActions({
   // 🎨 Renderizado inline (botones individuales)
   if (variant === 'inline') {
     return (
-      <div className={cn('flex items-center gap-2', className)}>
-        {/* 👁️ Ver documento */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onView?.(document.id)}
-          className="h-8"
-        >
-          <Eye className="w-4 h-4 mr-1" />
-          Ver
-        </Button>
-
-        {/* 📥 Descargar */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleDownload}
-          disabled={isLoading}
-          className="h-8"
-        >
-          <Download className="w-4 h-4 mr-1" />
-          Descargar
-        </Button>
-
-        {/* ✏️ Editar (solo borradores del propietario) */}
-        {canEdit && (
+      <>
+        <div className={cn('flex items-center gap-2', className)}>
+          {/* 👁️ Ver documento */}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onEdit?.(document.id)}
+            onClick={() => onView?.(document.id)}
             className="h-8"
           >
-            <Edit className="w-4 h-4 mr-1" />
-            Editar
+            <Eye className="w-4 h-4 mr-1" />
+            Ver
           </Button>
-        )}
 
-        {/* 📦 Archivar */}
-        {canArchive && (
+          {/* 📥 Descargar */}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleAction(() => onArchive?.(document.id))}
+            onClick={handleDownload}
             disabled={isLoading}
             className="h-8"
           >
-            <Archive className="w-4 h-4 mr-1" />
-            Archivar
+            <Download className="w-4 h-4 mr-1" />
+            Descargar
           </Button>
-        )}
 
-        {/* 🔄 Restaurar */}
-        {canRestore && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleAction(() => onRestore?.(document.id))}
-            disabled={isLoading}
-            className="h-8"
-          >
-            <ArchiveRestore className="w-4 h-4 mr-1" />
-            Restaurar
-          </Button>
-        )}
-      </div>
+          {/* ✏️ Editar (solo borradores del propietario) */}
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEdit?.(document.id)}
+              className="h-8"
+            >
+              <Edit className="w-4 h-4 mr-1" />
+              Editar
+            </Button>
+          )}
+
+          {/* 📦 Archivar */}
+          {canArchive && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAction(() => onArchive?.(document.id))}
+              disabled={isLoading}
+              className="h-8"
+            >
+              <Archive className="w-4 h-4 mr-1" />
+              Archivar
+            </Button>
+          )}
+
+          {/* 🔄 Restaurar */}
+          {canRestore && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAction(() => onRestore?.(document.id))}
+              disabled={isLoading}
+              className="h-8"
+            >
+              <ArchiveRestore className="w-4 h-4 mr-1" />
+              Restaurar
+            </Button>
+          )}
+
+          {/* 🗑️ Eliminar */}
+          {canDelete && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeleteClick}
+              disabled={isDeleting}
+              className="h-8 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Eliminar
+            </Button>
+          )}
+        </div>
+
+        {/* 🗑️ Diálogo de eliminación */}
+        <DocumentDeleteDialog
+          document={document}
+          isOpen={showDeleteDialog}
+          onClose={() => setShowDeleteDialog(false)}
+          onSuccess={handleDeleteSuccess}
+          onError={handleDeleteError}
+        />
+      </>
     );
   }
 
@@ -213,7 +268,7 @@ export function DocumentActions({
             variant="ghost" 
             size="sm"
             className={cn('h-8 w-8 p-0', className)}
-            disabled={isLoading}
+            disabled={isLoading || isDeleting}
           >
             <MoreHorizontal className="w-4 h-4" />
             <span className="sr-only">Acciones del documento</span>
@@ -240,7 +295,15 @@ export function DocumentActions({
           </DropdownMenuItem>
 
           {/* 🔗 Abrir en nueva pestaña */}
-          <DropdownMenuItem onClick={() => window.open(document.fileUrl, '_blank')}>
+          <DropdownMenuItem onClick={async () => {
+            try {
+              const { openDocumentInNewTab } = await import('@/utils/documentUtils');
+              await openDocumentInNewTab(document.id, document.fileName);
+            } catch (error) {
+              console.error('❌ Error opening document in new tab:', error);
+              // TODO: Mostrar toast de error
+            }
+          }}>
             <ExternalLink className="w-4 h-4 mr-2" />
             Abrir en nueva pestaña
           </DropdownMenuItem>
@@ -255,13 +318,18 @@ export function DocumentActions({
             </DropdownMenuItem>
           )}
 
-          {/* 🔗 Compartir */}
-          {onShare && (
-            <DropdownMenuItem onClick={() => onShare(document.id)}>
-              <Share className="w-4 h-4 mr-2" />
-              Compartir
-            </DropdownMenuItem>
+          {/* 🔄 Cambiar estado */}
+          {user && documentStatusHook.canChangeStatus(document, user.id, user.role).canChange && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setShowStatusDialog(true)}>
+                <Settings className="w-4 h-4 mr-2" />
+                Cambiar estado
+              </DropdownMenuItem>
+            </>
           )}
+
+
 
           {/* 📦 Archivar */}
           {canArchive && (
@@ -287,47 +355,38 @@ export function DocumentActions({
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
-                onClick={() => setShowDeleteDialog(true)}
+                onClick={handleDeleteClick}
                 className="text-destructive focus:text-destructive"
+                disabled={isDeleting}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Eliminar documento
+                {isDeleting ? 'Eliminando...' : 'Eliminar documento'}
               </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* 🚨 Dialog de confirmación de eliminación - Temporal */}
-      {showDeleteDialog && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-background border rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-2">¿Eliminar documento?</h3>
-            <div className="space-y-2 mb-6">
-              <p>
-                Estás a punto de eliminar el documento <strong>"{document.title}"</strong>.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Esta acción no se puede deshacer. El documento será eliminado permanentemente.
-              </p>
-            </div>
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowDeleteDialog(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-              >
-                Sí, eliminar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 🗑️ Diálogo de eliminación */}
+      <DocumentDeleteDialog
+        document={document}
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onSuccess={handleDeleteSuccess}
+        onError={handleDeleteError}
+      />
+
+      {/* 🔄 Diálogo de cambio de estado */}
+      <DocumentStatusChanger
+        document={document as any}
+        onStatusChange={async (documentId, newStatus, reason) => {
+          await documentStatusHook.changeDocumentStatus(documentId, newStatus, reason);
+          setShowStatusDialog(false);
+        }}
+        isOpen={showStatusDialog}
+        onClose={() => setShowStatusDialog(false)}
+        hideButton={true}
+      />
     </>
   );
 }

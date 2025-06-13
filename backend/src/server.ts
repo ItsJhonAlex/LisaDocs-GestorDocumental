@@ -23,6 +23,7 @@ import { workspaceRoutes } from './routes/workspaces'
 import { documentRoutes } from './routes/documents'
 import { notificationRoutes } from './routes/notifications'
 import { adminRoutes } from './routes/admin'
+import { reportsRoutes } from './routes/reports'
 
 // 📊 Servicios
 import { auditService } from './services/auditService'
@@ -280,6 +281,7 @@ async function createServer(): Promise<FastifyInstance> {
   await server.register(documentRoutes, { prefix: '/api/documents' })
   await server.register(notificationRoutes, { prefix: '/api/notifications' })
   await server.register(adminRoutes, { prefix: '/api/admin' })
+  await server.register(reportsRoutes, { prefix: '/api/reports' })
 
   // 🎣 Hooks globales
   server.addHook('onRequest', async (request, reply) => {
@@ -372,7 +374,7 @@ async function startServer(): Promise<ServerContext> {
     const server = await createServer()
     
     // 🚀 Iniciar servidor - CORREGIDO para evitar problemas con IPv6 y permisos
-    let port = parseInt(process.env.PORT || '8080')
+    let port = parseInt(process.env.PORT || '8081')
     const envHost = process.env.HOST || '127.0.0.1'
     
     // 🎯 Configuración del host según el entorno
@@ -400,7 +402,7 @@ async function startServer(): Promise<ServerContext> {
           server.log.warn(`Puerto ${oldPort} no disponible, intentando con puerto ${port}...`)
           
           if (retries >= maxRetries) {
-            throw new Error(`No se pudo iniciar el servidor después de ${maxRetries} intentos. Puertos probados: ${parseInt(process.env.PORT || '8080')} - ${port}. Error: ${error.message}`)
+            throw new Error(`No se pudo iniciar el servidor después de ${maxRetries} intentos. Puertos probados: ${parseInt(process.env.PORT || '8081')} - ${port}. Error: ${error.message}`)
           }
         } else {
           throw error

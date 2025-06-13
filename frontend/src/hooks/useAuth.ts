@@ -37,7 +37,7 @@ interface AuthState {
 }
 
 // 🌐 URL base del API
-const API_BASE_URL = 'http://localhost:8080/api'; // Ajusta según tu configuración
+const API_BASE_URL = 'http://localhost:8081/api'; // Ajusta según tu configuración
 
 /**
  * 🔐 Hook de autenticación con backend real

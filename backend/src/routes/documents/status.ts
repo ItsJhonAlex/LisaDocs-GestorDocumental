@@ -148,38 +148,12 @@ export async function statusRoute(fastify: FastifyInstance): Promise<void> {
 
         const currentStatus = currentDocument.status
 
-        // 🔐 Verificar permisos para cambiar estado
-        // TODO: Implementar lógica de permisos más sofisticada
-        const canChangeStatus = await validateStatusChangePermission(
-          user,
-          currentDocument,
-          currentStatus,
-          newStatus
-        )
-
-        if (!canChangeStatus.allowed) {
-          return reply.status(403).send({
-            success: false,
-            error: 'Permission denied',
-            details: canChangeStatus.reason
-          })
-        }
-
-        // ✅ Validar transición de estado
-        const validTransition = validateStatusTransition(currentStatus, newStatus)
-        if (!validTransition.valid) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Invalid status transition',
-            details: validTransition.reason
-          })
-        }
-
-        // 🔄 Cambiar estado del documento
+        // 🔄 Cambiar estado del documento con validaciones integradas
         const updatedDocument = await documentService.changeDocumentStatus(
           id,
           newStatus,
-          user.id
+          user.id,
+          `Status changed via API from ${currentStatus} to ${newStatus}`
         )
 
         // ✅ Respuesta exitosa

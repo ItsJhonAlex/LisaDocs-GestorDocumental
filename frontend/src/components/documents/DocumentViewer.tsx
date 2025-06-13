@@ -80,6 +80,7 @@ export function DocumentViewer({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [viewUrl, setViewUrl] = useState<string | null>(null);
   
   const viewerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -93,6 +94,22 @@ export function DocumentViewer({
       setTotalPages(1);
       setIsLoading(true);
       setError(null);
+      setViewUrl(null);
+      
+      // 🔗 Generar URL de visualización temporal
+      const generateViewUrl = async () => {
+        try {
+          const { generateViewUrl: getViewUrl } = await import('@/utils/documentUtils');
+          const tempUrl = await getViewUrl(document.id);
+          setViewUrl(tempUrl);
+        } catch (err) {
+          console.error('❌ Error generating view URL:', err);
+          setError('Error al generar URL de visualización');
+          setIsLoading(false);
+        }
+      };
+      
+      generateViewUrl();
     }
   }, [document]);
 
@@ -183,7 +200,7 @@ export function DocumentViewer({
 
   // 📄 Renderizar contenido según el tipo
   const renderDocumentContent = () => {
-    if (!document) return null;
+    if (!document || !viewUrl) return null;
 
     const documentType = getDocumentType(document.mimeType);
 
@@ -192,7 +209,7 @@ export function DocumentViewer({
         return (
           <div className="w-full h-full flex items-center justify-center">
             <iframe
-              src={`${document.fileUrl}#page=${currentPage}&zoom=${zoom}`}
+              src={`${viewUrl}#page=${currentPage}&zoom=${zoom}`}
               className="w-full h-full border-0"
               style={{
                 transform: `rotate(${rotation}deg)`,
@@ -212,7 +229,7 @@ export function DocumentViewer({
         return (
           <div className="w-full h-full flex items-center justify-center overflow-auto">
             <img
-              src={document.fileUrl}
+              src={viewUrl}
               alt={document.title}
               className="max-w-none"
               style={{
@@ -232,7 +249,7 @@ export function DocumentViewer({
         return (
           <div className="w-full h-full overflow-auto p-6">
             <iframe
-              src={document.fileUrl}
+              src={viewUrl}
               className="w-full h-full border-0 bg-white"
               style={{
                 fontSize: `${zoom}%`,
@@ -513,17 +530,37 @@ export function DocumentQuickPreview({
 }: QuickPreviewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewUrl, setViewUrl] = useState<string | null>(null);
 
   const documentType = document.mimeType.includes('pdf') ? 'pdf' 
     : document.mimeType.includes('image') ? 'image' 
     : 'unknown';
 
+  // 🔗 Generar URL de visualización al montar el componente
+  useEffect(() => {
+    const generateViewUrl = async () => {
+      try {
+        const { generateViewUrl: getViewUrl } = await import('@/utils/documentUtils');
+        const tempUrl = await getViewUrl(document.id);
+        setViewUrl(tempUrl);
+      } catch (err) {
+        console.error('❌ Error generating view URL for preview:', err);
+        setError('Error al cargar');
+        setIsLoading(false);
+      }
+    };
+    
+    generateViewUrl();
+  }, [document.id]);
+
   const renderPreview = () => {
+    if (!viewUrl) return null;
+
     switch (documentType) {
       case 'image':
         return (
           <img
-            src={document.fileUrl}
+            src={viewUrl}
             alt={document.title}
             className="w-full h-full object-contain"
             onLoad={() => setIsLoading(false)}
@@ -537,7 +574,7 @@ export function DocumentQuickPreview({
       case 'pdf':
         return (
           <iframe
-            src={`${document.fileUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+            src={`${viewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
             className="w-full h-full border-0"
             onLoad={() => setIsLoading(false)}
             onError={() => {

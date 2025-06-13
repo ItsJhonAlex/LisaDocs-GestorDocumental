@@ -119,7 +119,7 @@ export function Layout({ children, className }: LayoutProps) {
           <div className="container mx-auto px-4 py-4">
             <div className="flex flex-col sm:flex-row justify-between items-center text-sm text-muted-foreground">
               <p>
-                © 2024 LisaDocs - Sistema de Gestión Documental
+                © 2025 LisaDocs - Sistema de Gestión Documental
               </p>
               <div className="flex items-center space-x-4 mt-2 sm:mt-0">
                 <span>Versión 1.0.0</span>

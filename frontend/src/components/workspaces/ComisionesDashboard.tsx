@@ -52,7 +52,12 @@ interface Document {
   workspace: string;
   tags?: string[];
   createdBy: string;
-  createdByName?: string;
+  createdByUser: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  };
   createdAt: string;
   storedAt?: string;
   archivedAt?: string;
@@ -65,17 +70,22 @@ const mockComisionesDocuments: Document[] = [
     id: 'cf-1',
     title: 'Informe CF1 - Educación y Cultura',
     description: 'Informe mensual de la Comisión de Educación y Cultura',
-    fileName: 'informe-cf1-educacion-enero-2024.pdf',
+    fileName: 'informe-cf1-educacion-enero-2025.pdf',
     fileSize: 1792000,
     mimeType: 'application/pdf',
     status: 'stored',
     workspace: 'comisiones_cf',
     tags: ['informe', 'cf1', 'educación', 'cultura'],
     createdBy: 'coordinador-cf1-user',
-    createdByName: 'María González (Coordinadora CF1)',
-    createdAt: '2024-01-28T15:30:00Z',
-    storedAt: '2024-01-28T16:00:00Z',
-    fileUrl: '/uploads/comisiones_cf/informe-cf1-educacion-enero-2024.pdf'
+    createdByUser: {
+      id: 'coordinador-cf1-user',
+      fullName: 'María González',
+      email: 'maria.gonzalez@cf1.gob.cu',
+      role: 'cf_member'
+    },
+    createdAt: '2025-01-28T15:30:00Z',
+    storedAt: '2025-01-28T16:00:00Z',
+    fileUrl: '/uploads/comisiones_cf/informe-cf1-educacion-enero-2025.pdf'
   },
   {
     id: 'cf-2',
@@ -88,9 +98,14 @@ const mockComisionesDocuments: Document[] = [
     workspace: 'comisiones_cf',
     tags: ['propuesta', 'cf3', 'medio ambiente'],
     createdBy: 'coordinador-cf3-user',
-    createdByName: 'Carlos Pérez (Coordinador CF3)',
-    createdAt: '2024-01-25T11:20:00Z',
-    storedAt: '2024-01-25T12:00:00Z',
+    createdByUser: {
+      id: 'coordinador-cf3-user',
+      fullName: 'Carlos Pérez',
+      email: 'carlos.perez@cf3.gob.cu',
+      role: 'cf_member'
+    },
+    createdAt: '2025-01-25T11:20:00Z',
+    storedAt: '2025-01-25T12:00:00Z',
     fileUrl: '/uploads/comisiones_cf/propuesta-cf3-medio-ambiente.pdf'
   },
   {
@@ -104,8 +119,13 @@ const mockComisionesDocuments: Document[] = [
     workspace: 'comisiones_cf',
     tags: ['borrador', 'acta', 'cf5', 'deportes'],
     createdBy: 'current-user',
-    createdByName: 'Jonathan Rodriguez',
-    createdAt: '2024-01-30T09:15:00Z',
+    createdByUser: {
+      id: 'current-user',
+      fullName: 'Jonathan Rodriguez',
+      email: 'jonathan.rodriguez@cf5.gob.cu',
+      role: 'cf_member'
+    },
+    createdAt: '2025-01-30T09:15:00Z',
     fileUrl: '/uploads/comisiones_cf/borrador-acta-cf5-deportes.docx'
   },
   {
@@ -119,9 +139,14 @@ const mockComisionesDocuments: Document[] = [
     workspace: 'comisiones_cf',
     tags: ['dictamen', 'cf2', 'salud', 'pública'],
     createdBy: 'medico-user',
-    createdByName: 'Dr. Antonio Silva (CF2)',
-    createdAt: '2024-01-22T14:45:00Z',
-    storedAt: '2024-01-22T15:30:00Z',
+    createdByUser: {
+      id: 'medico-user',
+      fullName: 'Dr. Antonio Silva',
+      email: 'antonio.silva@cf2.gob.cu',
+      role: 'cf_member'
+    },
+    createdAt: '2025-01-22T14:45:00Z',
+    storedAt: '2025-01-22T15:30:00Z',
     fileUrl: '/uploads/comisiones_cf/dictamen-cf2-salud-publica.pdf'
   },
   {
@@ -135,10 +160,15 @@ const mockComisionesDocuments: Document[] = [
     workspace: 'comisiones_cf',
     tags: ['memoria', 'cf4', 'servicios', 'públicos'],
     createdBy: 'ingeniero-user',
-    createdByName: 'Ing. Laura Díaz (CF4)',
+    createdByUser: {
+      id: 'ingeniero-user',
+      fullName: 'Ing. Laura Díaz',
+      email: 'laura.diaz@cf4.gob.cu',
+      role: 'cf_member'
+    },
     createdAt: '2023-12-20T16:00:00Z',
     storedAt: '2023-12-20T17:00:00Z',
-    archivedAt: '2024-01-10T09:00:00Z',
+    archivedAt: '2025-01-10T09:00:00Z',
     fileUrl: '/uploads/comisiones_cf/memoria-cf4-servicios-2023.pdf'
   }
 ];
@@ -273,7 +303,7 @@ export function ComisionesDashboard() {
         workspace: doc.workspace,
         tags: doc.tags || [],
         createdBy: doc.createdByUser.id,
-        createdByName: doc.createdByUser.fullName,
+        createdByUser: doc.createdByUser,
         createdAt: doc.createdAt,
         fileUrl: `/api/documents/${doc.id}/download`
       }));
@@ -293,14 +323,22 @@ export function ComisionesDashboard() {
     }
   };
 
-  const handleDownload = (documentId: string) => {
+  const handleDownload = async (documentId: string) => {
     const doc = documents.find(d => d.id === documentId);
     if (doc) {
       console.log('Downloading Comisiones document:', doc.fileName);
-      const link = document.createElement('a');
-      link.href = doc.fileUrl;
-      link.download = doc.fileName;
-      link.click();
+      try {
+        // 📥 Usar función que extrae nombre correcto del backend
+        const { downloadDocumentWithCorrectName } = await import('@/utils/documentUtils');
+        await downloadDocumentWithCorrectName(doc.fileUrl, doc.fileName);
+      } catch (error) {
+        console.error('❌ Error downloading document:', error);
+        // Fallback a descarga directa si falla
+        const link = document.createElement('a');
+        link.href = doc.fileUrl;
+        link.download = doc.fileName;
+        link.click();
+      }
     }
   };
 
@@ -543,7 +581,8 @@ export function ComisionesDashboard() {
                     onDownload={handleDownload}
                     onArchive={canArchiveOthers ? handleArchive : undefined}
                     onRestore={canArchiveOthers ? handleRestore : undefined}
-                    onDelete={canManage ? handleDelete : undefined}
+                    onDeleteSuccess={canManage ? (id) => handleDelete(id) : undefined}
+                    onDeleteError={canManage ? (error) => console.error('Delete error:', error) : undefined}
                     onEdit={handleEdit}
                     onShare={handleShare}
                     currentPage={currentPage}

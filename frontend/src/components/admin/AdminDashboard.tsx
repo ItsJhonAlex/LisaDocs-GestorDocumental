@@ -262,7 +262,7 @@ export function AdminDashboard() {
           <CardHeader>
             <CardTitle className="text-destructive">Error de Conexión</CardTitle>
             <CardDescription>
-              No se pudo conectar con el servidor. Verifica que el backend esté ejecutándose en http://localhost:8080
+              No se pudo conectar con el servidor. Verifica que el backend esté ejecutándose en http://localhost:8081
             </CardDescription>
           </CardHeader>
           <CardContent>

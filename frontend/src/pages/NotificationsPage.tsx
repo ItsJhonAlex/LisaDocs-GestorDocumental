@@ -62,8 +62,8 @@ const mockNotifications: Notification[] = [
     priority: 'high',
     status: 'sent',
     recipients: 'all',
-    createdAt: '2024-01-15T10:00:00Z',
-    sentAt: '2024-01-15T10:05:00Z',
+    createdAt: '2025-01-15T10:00:00Z',
+    sentAt: '2025-01-15T10:05:00Z',
     createdBy: 'Jonathan Rodriguez',
     readCount: 42,
     totalRecipients: 45
@@ -76,8 +76,8 @@ const mockNotifications: Notification[] = [
     priority: 'medium',
     status: 'sent',
     recipients: 'admins',
-    createdAt: '2024-01-14T14:30:00Z',
-    sentAt: '2024-01-14T14:35:00Z',
+    createdAt: '2025-01-14T14:30:00Z',
+    sentAt: '2025-01-14T14:35:00Z',
     createdBy: 'Jonathan Rodriguez',
     readCount: 8,
     totalRecipients: 12
@@ -90,7 +90,7 @@ const mockNotifications: Notification[] = [
     priority: 'low',
     status: 'draft',
     recipients: 'all',
-    createdAt: '2024-01-16T09:15:00Z',
+    createdAt: '2025-01-16T09:15:00Z',
     createdBy: 'Jonathan Rodriguez',
     readCount: 0,
     totalRecipients: 0

@@ -119,9 +119,47 @@ export async function getRoute(fastify: FastifyInstance): Promise<void> {
           })
         }
 
-        // 🔐 TODO: Verificar permisos de acceso al workspace
-        // Aquí implementarías la lógica de permisos según el rol del usuario
-        // y el workspace del documento
+        // 🔐 Verificar permisos de acceso
+        const { permissionService } = await import('../../services/permissionService')
+        
+        // 🔍 El usuario puede acceder si:
+        // 1. Es el creador del documento
+        // 2. Tiene permisos para ver el workspace del documento
+        // 3. Es administrador
+        
+        let hasAccess = false
+        
+        // 👑 Administradores tienen acceso total
+        if (user.role === 'administrador') {
+          hasAccess = true
+        }
+        // 👤 Creador del documento siempre tiene acceso
+        else if (document.createdBy === user.id) {
+          hasAccess = true
+        }
+        // 🏢 Verificar permisos del workspace
+        else {
+          const workspaceAccess = await permissionService.checkWorkspaceAccess(user.id, document.workspace)
+          hasAccess = workspaceAccess.hasAccess
+        }
+        
+        if (!hasAccess) {
+          return reply.status(403).send({
+            success: false,
+            error: 'Access denied',
+            details: 'You do not have permission to access this document'
+          })
+        }
+
+        console.log('📄 Document access granted:', {
+          documentId: id,
+          documentCreator: document.createdBy,
+          requestingUser: user.id,
+          userRole: user.role,
+          workspace: document.workspace,
+          accessReason: user.role === 'administrador' ? 'admin' : 
+                       document.createdBy === user.id ? 'owner' : 'workspace_permission'
+        })
 
         // 📋 Formatear respuesta con toda la información del documento
         const formattedDocument = {

@@ -132,12 +132,31 @@ export const useBackendDocuments = (initialFilters: BackendDocumentFilters = {})
         throw new Error('Error al descargar documento');
       }
 
+      // 📄 Extraer nombre del archivo del header Content-Disposition
+      const contentDisposition = response.headers.get('content-disposition') || '';
+      let finalFileName = fileName; // Fallback al nombre proporcionado
+      
+      // Intentar extraer el nombre del header usando diferentes patrones
+      const patterns = [
+        /filename\*=UTF-8''([^;]+)/,  // RFC 5987 encoded
+        /filename\*=['"]?([^'";]+)['"]?/, // Con asterisco
+        /filename=['"]?([^'";]+)['"]?/    // Sin asterisco
+      ];
+      
+      for (const pattern of patterns) {
+        const match = contentDisposition.match(pattern);
+        if (match && match[1]) {
+          finalFileName = decodeURIComponent(match[1]);
+          break;
+        }
+      }
+
       // Crear blob y descargar
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = fileName;
+      link.download = finalFileName;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -181,7 +200,7 @@ export const useBackendDocuments = (initialFilters: BackendDocumentFilters = {})
   // 🗑️ Eliminar documento
   const deleteDocument = async (id: string) => {
     try {
-      const response = await fetch(`/api/documents/${id}`, {
+      const response = await fetch(`/api/documents/${id}?confirm=true`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
@@ -196,8 +215,15 @@ export const useBackendDocuments = (initialFilters: BackendDocumentFilters = {})
       // Remover documento de la lista local
       setDocuments(prev => prev.filter(doc => doc.id !== id));
       setTotal(prev => prev - 1);
+      
+      const result = await response.json();
+      console.log('✅ Document deleted successfully:', result.data);
+      
+      return { success: true };
     } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Error al eliminar documento');
+      const errorMessage = err instanceof Error ? err.message : 'Error al eliminar documento';
+      console.error('❌ Delete document error:', err);
+      throw new Error(errorMessage);
     }
   };
 

@@ -30,7 +30,12 @@ interface Document {
   workspace: string;
   tags?: string[];
   createdBy: string;
-  createdByName?: string;
+  createdByUser: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  };
   createdAt: string;
   storedAt?: string;
   archivedAt?: string;
@@ -43,7 +48,8 @@ interface DocumentCardProps {
   onDownload?: (documentId: string) => void;
   onArchive?: (documentId: string) => void;
   onRestore?: (documentId: string) => void;
-  onDelete?: (documentId: string) => void;
+  onDeleteSuccess?: (documentId: string) => void;
+  onDeleteError?: (error: string) => void;
   onEdit?: (documentId: string) => void;
   onShare?: (documentId: string) => void;
   className?: string;
@@ -60,9 +66,9 @@ export function DocumentCard({
   onDownload,
   onArchive,
   onRestore,
-  onDelete,
+  onDeleteSuccess,
+  onDeleteError,
   onEdit,
-  onShare,
   className,
   variant = 'card',
   showActions = true
@@ -208,7 +214,7 @@ export function DocumentCard({
         <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
           <User className="w-4 h-4 flex-shrink-0" />
           <span className="truncate">
-            {document.createdByName || 'Usuario'}
+            {document.createdByUser?.fullName || 'Usuario'}
           </span>
         </div>
 
@@ -233,9 +239,9 @@ export function DocumentCard({
             onDownload={onDownload}
             onArchive={onArchive}
             onRestore={onRestore}
-            onDelete={onDelete}
+            onDeleteSuccess={onDeleteSuccess}
+            onDeleteError={onDeleteError}
             onEdit={onEdit}
-            onShare={onShare}
           />
         )}
       </div>
@@ -279,9 +285,9 @@ export function DocumentCard({
                 onDownload={onDownload}
                 onArchive={onArchive}
                 onRestore={onRestore}
-                onDelete={onDelete}
+                onDeleteSuccess={onDeleteSuccess}
+                onDeleteError={onDeleteError}
                 onEdit={onEdit}
-                onShare={onShare}
               />
             )}
           </div>
@@ -318,7 +324,7 @@ export function DocumentCard({
             {/* 👤 Creador */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <User className="w-4 h-4" />
-              <span>Creado por {document.createdByName || 'Usuario'}</span>
+              <span>Creado por {document.createdByUser?.fullName || 'Usuario'}</span>
             </div>
 
             {/* 📏 Tamaño y fecha */}

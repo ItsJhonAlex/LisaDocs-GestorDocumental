@@ -353,5 +353,5 @@ El sistema de gestión de usuarios implementado proporciona una base sólida y e
 
 ---
 
-*Documentación actualizada: Diciembre 2024*
+*Documentación actualizada: Diciembre 2025*
 *Sistema implementado por: Jonathan Alejandro Rodriguez Lopes (@ItsJhonAlex)*

@@ -38,7 +38,7 @@ interface AuditEntry {
 const mockAuditLog: AuditEntry[] = [
   {
     id: 'audit-1',
-    timestamp: '2024-01-30T14:25:00Z',
+    timestamp: '2025-01-30T14:25:00Z',
     user: 'Jonathan Rodriguez',
     userRole: 'administrador',
     action: 'LOGIN',
@@ -50,31 +50,31 @@ const mockAuditLog: AuditEntry[] = [
   },
   {
     id: 'audit-2',
-    timestamp: '2024-01-30T14:20:00Z',
+    timestamp: '2025-01-30T14:20:00Z',
     user: 'Carlos Mendoza',
     userRole: 'presidente',
     action: 'DOCUMENT_UPLOAD',
     resource: '/workspaces/presidencia',
-    details: 'Subió decreto-municipal-002-2024.pdf',
+    details: 'Subió decreto-municipal-002-2025.pdf',
     ipAddress: '192.168.1.105',
     severity: 'medium',
     category: 'document'
   },
   {
     id: 'audit-3',
-    timestamp: '2024-01-30T14:15:00Z',
+    timestamp: '2025-01-30T14:15:00Z',
     user: 'Elena Rodríguez',
     userRole: 'secretario_cam',
     action: 'DOCUMENT_VIEW',
     resource: '/workspaces/cam',
-    details: 'Visualizó acta-cam-enero-2024.pdf',
+    details: 'Visualizó acta-cam-enero-2025.pdf',
     ipAddress: '192.168.1.110',
     severity: 'low',
     category: 'document'
   },
   {
     id: 'audit-4',
-    timestamp: '2024-01-30T14:10:00Z',
+    timestamp: '2025-01-30T14:10:00Z',
     user: 'Sistema',
     userRole: 'system',
     action: 'BACKUP_CREATED',
@@ -86,7 +86,7 @@ const mockAuditLog: AuditEntry[] = [
   },
   {
     id: 'audit-5',
-    timestamp: '2024-01-30T13:55:00Z',
+    timestamp: '2025-01-30T13:55:00Z',
     user: 'Usuario Desconocido',
     userRole: 'unknown',
     action: 'LOGIN_FAILED',

@@ -184,11 +184,27 @@ export async function listRoute(fastify: FastifyInstance): Promise<void> {
           })
         }
 
-        // 📊 Obtener documentos
-        const result = await documentService.getDocuments(filters as any)
+        console.log('📋 Fetching documents for user:', {
+          userId: user.id,
+          userRole: user.role,
+          userWorkspace: user.workspace,
+          filters
+        })
+
+        // 📊 Obtener documentos con control de acceso
+        const result = await documentService.getDocuments({
+          ...filters,
+          requestingUserId: user.id // 🔐 Pasar ID del usuario para control de acceso
+        } as any)
+
+        console.log('📊 Documents fetched:', {
+          total: result.total,
+          documentsCount: result.documents.length,
+          hasMore: result.hasMore
+        })
 
         // 📋 Formatear respuesta
-        const formattedDocuments = result.documents.map(doc => ({
+        const formattedDocuments = result.documents.map((doc: any) => ({
           id: doc.id,
           title: doc.title,
           description: doc.description,

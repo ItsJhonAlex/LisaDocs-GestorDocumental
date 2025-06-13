@@ -37,7 +37,7 @@ export function enrichBackendDocument(backendDoc: BackendDocument): Document {
       id: backendDoc.createdByUser.id,
       fullName: backendDoc.createdByUser.fullName,
       email: backendDoc.createdByUser.email || 'no-email@example.com',
-      role: 'cf_member' as const
+      role: backendDoc.createdByUser.role as any
     },
     createdAt: backendDoc.createdAt,
     metadata: {},
@@ -161,6 +161,75 @@ export function isDocumentTypeValidForWorkspace(
 }
 
 /**
+ * 📥 Descargar documento con nombre correcto del backend
+ */
+export async function downloadDocumentWithCorrectName(
+  fileUrl: string, 
+  fallbackFileName: string
+): Promise<void> {
+  try {
+    console.log('🔍 Debug: Starting download with:', { fileUrl, fallbackFileName });
+    
+    // 📥 Hacer fetch para obtener el archivo con headers correctos
+    const response = await fetch(fileUrl, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al descargar documento');
+    }
+
+    // 🔍 Debug: Mostrar todos los headers de respuesta
+    console.log('🔍 Debug: Response headers:');
+    response.headers.forEach((value, key) => {
+      console.log(`  ${key}: ${value}`);
+    });
+
+    // 📄 Extraer nombre del archivo del header Content-Disposition
+    const contentDisposition = response.headers.get('content-disposition') || '';
+    console.log('🔍 Debug: Content-Disposition header:', contentDisposition);
+    
+    let fileName = fallbackFileName; // Fallback al nombre almacenado
+    
+    // Intentar extraer el nombre del header usando diferentes patrones
+    const patterns = [
+      /filename\*=UTF-8''([^;]+)/,  // RFC 5987 encoded
+      /filename\*=['"]?([^'";]+)['"]?/, // Con asterisco
+      /filename=['"]?([^'";]+)['"]?/    // Sin asterisco
+    ];
+    
+    for (const pattern of patterns) {
+      const match = contentDisposition.match(pattern);
+      if (match && match[1]) {
+        fileName = decodeURIComponent(match[1]);
+        console.log('🔍 Debug: Extracted filename from header:', fileName);
+        break;
+      }
+    }
+
+    console.log('🔍 Debug: Final filename to use:', fileName);
+
+    // 💾 Crear blob y descargar
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+    
+    console.log('✅ Document downloaded successfully:', fileName);
+  } catch (error) {
+    console.error('❌ Error downloading document:', error);
+    throw error;
+  }
+}
+
+/**
  * 📋 Crear mock data con tipos de documentos
  */
 export function createMockDocumentWithType(
@@ -199,4 +268,52 @@ export function createMockDocumentWithType(
   };
   
   return baseDoc;
+}
+
+/**
+ * 🔗 Generar URL de visualización autenticada para iframes y nueva pestaña
+ */
+export async function generateViewUrl(documentId: string): Promise<string> {
+  try {
+    const response = await fetch(`/api/documents/${documentId}/view-url`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al generar URL de visualización');
+    }
+
+    const result = await response.json();
+    return result.data.viewUrl;
+  } catch (error) {
+    console.error('❌ Error generating view URL:', error);
+    throw error;
+  }
+}
+
+/**
+ * 📄 Abrir documento en nueva pestaña con autenticación
+ */
+export async function openDocumentInNewTab(documentId: string, fileName: string): Promise<void> {
+  try {
+    console.log('🔍 Opening document in new tab:', { documentId, fileName });
+    
+    // Generar URL temporal autenticada
+    const viewUrl = await generateViewUrl(documentId);
+    
+    // Abrir en nueva pestaña
+    const newWindow = window.open(viewUrl, '_blank');
+    
+    if (!newWindow) {
+      throw new Error('El navegador bloqueó la ventana emergente');
+    }
+    
+    console.log('✅ Document opened in new tab successfully');
+  } catch (error) {
+    console.error('❌ Error opening document in new tab:', error);
+    throw error;
+  }
 } 

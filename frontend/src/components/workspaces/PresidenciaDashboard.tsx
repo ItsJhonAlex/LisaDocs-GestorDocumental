@@ -31,6 +31,7 @@ import {
 
 import { useAuth } from '@/hooks/useAuth';
 import type { BackendDocument } from '@/hooks/useBackendDocuments';
+import { downloadDocumentWithCorrectName } from '@/utils/documentUtils';
 
 // 🎯 Tipos específicos para Presidencia
 interface PresidenciaStats {
@@ -52,7 +53,12 @@ interface Document {
   workspace: string;
   tags?: string[];
   createdBy: string;
-  createdByName?: string;
+  createdByUser: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  };
   createdAt: string;
   storedAt?: string;
   archivedAt?: string;
@@ -63,19 +69,24 @@ interface Document {
 const mockPresidenciaDocuments: Document[] = [
   {
     id: 'pres-1',
-    title: 'Decreto Municipal 001-2024',
+    title: 'Decreto Municipal 001-2025',
     description: 'Decreto sobre nuevas políticas administrativas municipales',
-    fileName: 'decreto-municipal-001-2024.pdf',
+    fileName: 'decreto-municipal-001-2025.pdf',
     fileSize: 1536000,
     mimeType: 'application/pdf',
     status: 'stored',
     workspace: 'presidencia',
     tags: ['decreto', 'políticas', 'administración'],
     createdBy: 'presidente-user',
-    createdByName: 'Carlos Mendoza (Presidente)',
-    createdAt: '2024-01-20T14:30:00Z',
-    storedAt: '2024-01-20T15:00:00Z',
-    fileUrl: '/uploads/presidencia/decreto-municipal-001-2024.pdf'
+    createdByUser: {
+      id: 'presidente-user',
+      fullName: 'Carlos Mendoza (Presidente)',
+      email: 'presidente@lisadocs.gob.cu',
+      role: 'presidente'
+    },
+    createdAt: '2025-01-20T14:30:00Z',
+    storedAt: '2025-01-20T15:00:00Z',
+    fileUrl: '/uploads/presidencia/decreto-municipal-001-2025.pdf'
   },
   {
     id: 'pres-2',
@@ -88,9 +99,14 @@ const mockPresidenciaDocuments: Document[] = [
     workspace: 'presidencia',
     tags: ['comunicado', 'medidas', 'oficial'],
     createdBy: 'secretario-user',
-    createdByName: 'Ana López (Secretaria)',
-    createdAt: '2024-01-18T10:15:00Z',
-    storedAt: '2024-01-18T11:00:00Z',
+    createdByUser: {
+      id: 'secretario-user',
+      fullName: 'Ana López (Secretaria)',
+      email: 'secretaria@lisadocs.gob.cu',
+      role: 'secretario_cam'
+    },
+    createdAt: '2025-01-18T10:15:00Z',
+    storedAt: '2025-01-18T11:00:00Z',
     fileUrl: '/uploads/presidencia/comunicado-nuevas-medidas.pdf'
   },
   {
@@ -104,25 +120,35 @@ const mockPresidenciaDocuments: Document[] = [
     workspace: 'presidencia',
     tags: ['informe', 'semanal', 'gestión'],
     createdBy: 'current-user',
-    createdByName: 'Jonathan Rodriguez',
-    createdAt: '2024-01-22T09:00:00Z',
+    createdByUser: {
+      id: 'current-user',
+      fullName: 'Jonathan Rodriguez',
+      email: 'jonathan@lisadocs.gob.cu',
+      role: 'administrador'
+    },
+    createdAt: '2025-01-22T09:00:00Z',
     fileUrl: '/uploads/presidencia/informe-semanal-gestión.docx'
   },
   {
     id: 'pres-4',
-    title: 'Resolución Administrativa 005-2024',
+    title: 'Resolución Administrativa 005-2025',
     description: 'Resolución sobre modificaciones en el organigrama municipal',
-    fileName: 'resolucion-admin-005-2024.pdf',
+    fileName: 'resolucion-admin-005-2025.pdf',
     fileSize: 1024000,
     mimeType: 'application/pdf',
     status: 'stored',
     workspace: 'presidencia',
     tags: ['resolución', 'organigrama', 'administrativa'],
     createdBy: 'vicepresidente-user',
-    createdByName: 'María García (Vicepresidenta)',
-    createdAt: '2024-01-15T16:45:00Z',
-    storedAt: '2024-01-15T17:00:00Z',
-    fileUrl: '/uploads/presidencia/resolucion-admin-005-2024.pdf'
+    createdByUser: {
+      id: 'vicepresidente-user',
+      fullName: 'María García (Vicepresidenta)',
+      email: 'vicepresidenta@lisadocs.gob.cu',
+      role: 'vicepresidente'
+    },
+    createdAt: '2025-01-15T16:45:00Z',
+    storedAt: '2025-01-15T17:00:00Z',
+    fileUrl: '/uploads/presidencia/resolucion-admin-005-2025.pdf'
   },
   {
     id: 'pres-5',
@@ -135,10 +161,15 @@ const mockPresidenciaDocuments: Document[] = [
     workspace: 'presidencia',
     tags: ['acta', 'reunión', 'mensual'],
     createdBy: 'presidente-user',
-    createdByName: 'Carlos Mendoza (Presidente)',
-    createdAt: '2024-01-05T14:00:00Z',
-    storedAt: '2024-01-05T15:00:00Z',
-    archivedAt: '2024-01-20T10:00:00Z',
+    createdByUser: {
+      id: 'presidente-user',
+      fullName: 'Carlos Mendoza (Presidente)',
+      email: 'presidente@lisadocs.gob.cu',
+      role: 'presidente'
+    },
+    createdAt: '2025-01-05T14:00:00Z',
+    storedAt: '2025-01-05T15:00:00Z',
+    archivedAt: '2025-01-20T10:00:00Z',
     fileUrl: '/uploads/presidencia/acta-reunion-presidencia-enero.pdf'
   }
 ];
@@ -197,18 +228,48 @@ export function PresidenciaDashboard() {
     const loadDocuments = async () => {
       setIsLoading(true);
       try {
-        // Simular llamada API
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Filtrar solo documentos de presidencia
-        const presidenciaDocuments = mockPresidenciaDocuments.filter(doc => 
-          doc.workspace === 'presidencia'
-        );
+        // 📡 Llamada real al backend
+        const response = await fetch('/api/documents?workspace=presidencia', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al cargar documentos');
+        }
+
+        const result = await response.json();
+        const backendDocuments: BackendDocument[] = result.data.documents;
+
+        // Convertir BackendDocument a formato local Document
+        const presidenciaDocuments: Document[] = backendDocuments.map(doc => ({
+          id: doc.id,
+          title: doc.title,
+          description: doc.description,
+          fileName: doc.fileName,
+          fileSize: doc.fileSize,
+          mimeType: doc.mimeType,
+          status: doc.status,
+          workspace: doc.workspace,
+          tags: doc.tags || [],
+          createdBy: doc.createdByUser.id,
+          createdByUser: doc.createdByUser,
+          createdAt: doc.createdAt,
+          fileUrl: `/api/documents/${doc.id}/download`
+        }));
         
         setDocuments(presidenciaDocuments);
         setFilteredDocuments(presidenciaDocuments);
       } catch (error) {
         console.error('Error loading presidencia documents:', error);
+        // 🔄 Fallback a documentos mock en caso de error
+        const presidenciaDocuments = mockPresidenciaDocuments.filter(doc => 
+          doc.workspace === 'presidencia'
+        );
+        setDocuments(presidenciaDocuments);
+        setFilteredDocuments(presidenciaDocuments);
       } finally {
         setIsLoading(false);
       }
@@ -268,7 +329,7 @@ export function PresidenciaDashboard() {
         workspace: doc.workspace,
         tags: doc.tags || [],
         createdBy: doc.createdByUser.id,
-        createdByName: doc.createdByUser.fullName,
+        createdByUser: doc.createdByUser,
         createdAt: doc.createdAt,
         fileUrl: `/api/documents/${doc.id}/download`
       }));
@@ -288,14 +349,16 @@ export function PresidenciaDashboard() {
     }
   };
 
-  const handleDownload = (documentId: string) => {
+  const handleDownload = async (documentId: string) => {
     const doc = documents.find(d => d.id === documentId);
-    if (doc) {
+    if (!doc) return;
+
+    try {
       console.log('Downloading Presidencia document:', doc.fileName);
-      const link = document.createElement('a');
-      link.href = doc.fileUrl;
-      link.download = doc.fileName;
-      link.click();
+      await downloadDocumentWithCorrectName(doc.fileUrl, doc.fileName);
+    } catch (error) {
+      console.error('❌ Error downloading document:', error);
+      // TODO: Mostrar toast de error al usuario
     }
   };
 
@@ -526,7 +589,12 @@ export function PresidenciaDashboard() {
                     onDownload={handleDownload}
                     onArchive={canArchiveOthers ? handleArchive : undefined}
                     onRestore={canArchiveOthers ? handleRestore : undefined}
-                    onDelete={canManage ? handleDelete : undefined}
+                    onDeleteSuccess={(documentId) => {
+                      setDocuments(prev => prev.filter(doc => doc.id !== documentId));
+                    }}
+                    onDeleteError={(error) => {
+                      console.error('Error deleting document:', error);
+                    }}
                     onEdit={handleEdit}
                     onShare={handleShare}
                     currentPage={currentPage}

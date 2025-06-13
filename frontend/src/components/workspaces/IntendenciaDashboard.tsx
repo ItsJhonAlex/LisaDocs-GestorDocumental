@@ -31,6 +31,7 @@ import {
 
 import { useAuth } from '@/hooks/useAuth';
 import type { BackendDocument } from '@/hooks/useBackendDocuments';
+import { downloadDocumentWithCorrectName } from '@/utils/documentUtils';
 
 // 🎯 Tipos específicos para Intendencia
 interface IntendenciaStats {
@@ -52,7 +53,12 @@ interface Document {
   workspace: string;
   tags?: string[];
   createdBy: string;
-  createdByName?: string;
+  createdByUser: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  };
   createdAt: string;
   storedAt?: string;
   archivedAt?: string;
@@ -63,35 +69,45 @@ interface Document {
 const mockIntendenciaDocuments: Document[] = [
   {
     id: 'int-1',
-    title: 'Plan de Desarrollo Urbano 2024',
+    title: 'Plan de Desarrollo Urbano 2025',
     description: 'Plan estratégico de desarrollo urbano para el municipio',
-    fileName: 'plan-desarrollo-urbano-2024.pdf',
+    fileName: 'plan-desarrollo-urbano-2025.pdf',
     fileSize: 4096000,
     mimeType: 'application/pdf',
     status: 'stored',
     workspace: 'intendencia',
     tags: ['plan', 'desarrollo', 'urbano'],
     createdBy: 'intendente-user',
-    createdByName: 'Roberto Castro (Intendente)',
-    createdAt: '2024-01-18T11:30:00Z',
-    storedAt: '2024-01-18T12:00:00Z',
-    fileUrl: '/uploads/intendencia/plan-desarrollo-urbano-2024.pdf'
+    createdByUser: {
+      id: 'intendente-user',
+      fullName: 'Roberto Castro (Intendente)',
+      email: 'intendente@lisadocs.gob.cu',
+      role: 'intendente'
+    },
+    createdAt: '2025-01-18T11:30:00Z',
+    storedAt: '2025-01-18T12:00:00Z',
+    fileUrl: '/uploads/intendencia/plan-desarrollo-urbano-2025.pdf'
   },
   {
     id: 'int-2',
     title: 'Informe de Gestión Municipal - Enero',
     description: 'Informe mensual de las actividades de gestión municipal',
-    fileName: 'informe-gestion-enero-2024.pdf',
+    fileName: 'informe-gestion-enero-2025.pdf',
     fileSize: 1856000,
     mimeType: 'application/pdf',
     status: 'stored',
     workspace: 'intendencia',
     tags: ['informe', 'gestión', 'mensual'],
     createdBy: 'coordinador-user',
-    createdByName: 'Patricia Morales (Coordinadora)',
-    createdAt: '2024-01-30T16:45:00Z',
-    storedAt: '2024-01-30T17:15:00Z',
-    fileUrl: '/uploads/intendencia/informe-gestion-enero-2024.pdf'
+    createdByUser: {
+      id: 'coordinador-user',
+      fullName: 'Patricia Morales (Coordinadora)',
+      email: 'coordinadora@lisadocs.gob.cu',
+      role: 'coordinador'
+    },
+    createdAt: '2025-01-30T16:45:00Z',
+    storedAt: '2025-01-30T17:15:00Z',
+    fileUrl: '/uploads/intendencia/informe-gestion-enero-2025.pdf'
   },
   {
     id: 'int-3',
@@ -104,8 +120,13 @@ const mockIntendenciaDocuments: Document[] = [
     workspace: 'intendencia',
     tags: ['borrador', 'vialidad', 'infraestructura'],
     createdBy: 'current-user',
-    createdByName: 'Jonathan Rodriguez',
-    createdAt: '2024-01-25T14:20:00Z',
+    createdByUser: {
+      id: 'current-user',
+      fullName: 'Jonathan Rodriguez',
+      email: 'jonathan@lisadocs.gob.cu',
+      role: 'administrador'
+    },
+    createdAt: '2025-01-25T14:20:00Z',
     fileUrl: '/uploads/intendencia/borrador-mejoras-vialidad.docx'
   },
   {
@@ -119,9 +140,14 @@ const mockIntendenciaDocuments: Document[] = [
     workspace: 'intendencia',
     tags: ['permisos', 'construcción', 'registro'],
     createdBy: 'arquitecto-user',
-    createdByName: 'Fernando Ruiz (Arquitecto Municipal)',
-    createdAt: '2024-01-22T10:30:00Z',
-    storedAt: '2024-01-22T11:00:00Z',
+    createdByUser: {
+      id: 'arquitecto-user',
+      fullName: 'Fernando Ruiz (Arquitecto Municipal)',
+      email: 'arquitecto@lisadocs.gob.cu',
+      role: 'arquitecto'
+    },
+    createdAt: '2025-01-22T10:30:00Z',
+    storedAt: '2025-01-22T11:00:00Z',
     fileUrl: '/uploads/intendencia/registro-permisos-construccion.xlsx'
   },
   {
@@ -135,10 +161,15 @@ const mockIntendenciaDocuments: Document[] = [
     workspace: 'intendencia',
     tags: ['memoria', 'anual', 'actividades'],
     createdBy: 'intendente-user',
-    createdByName: 'Roberto Castro (Intendente)',
+    createdByUser: {
+      id: 'intendente-user',
+      fullName: 'Roberto Castro (Intendente)',
+      email: 'intendente@lisadocs.gob.cu',
+      role: 'intendente'
+    },
     createdAt: '2023-12-30T15:00:00Z',
     storedAt: '2023-12-30T16:00:00Z',
-    archivedAt: '2024-01-15T08:00:00Z',
+    archivedAt: '2025-01-15T08:00:00Z',
     fileUrl: '/uploads/intendencia/memoria-anual-intendencia-2023.pdf'
   }
 ];
@@ -197,16 +228,48 @@ export function IntendenciaDashboard() {
     const loadDocuments = async () => {
       setIsLoading(true);
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const intendenciaDocuments = mockIntendenciaDocuments.filter(doc => 
-          doc.workspace === 'intendencia'
-        );
+        // 📡 Llamada real al backend
+        const response = await fetch('/api/documents?workspace=intendencia', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al cargar documentos');
+        }
+
+        const result = await response.json();
+        const backendDocuments: BackendDocument[] = result.data.documents;
+
+        // Convertir BackendDocument a formato local Document
+        const intendenciaDocuments: Document[] = backendDocuments.map(doc => ({
+          id: doc.id,
+          title: doc.title,
+          description: doc.description,
+          fileName: doc.fileName,
+          fileSize: doc.fileSize,
+          mimeType: doc.mimeType,
+          status: doc.status,
+          workspace: doc.workspace,
+          tags: doc.tags || [],
+          createdBy: doc.createdByUser.id,
+          createdByUser: doc.createdByUser,
+          createdAt: doc.createdAt,
+          fileUrl: `/api/documents/${doc.id}/download`
+        }));
         
         setDocuments(intendenciaDocuments);
         setFilteredDocuments(intendenciaDocuments);
       } catch (error) {
-        console.error('Error loading Intendencia documents:', error);
+        console.error('Error loading intendencia documents:', error);
+        // 🔄 Fallback a documentos mock en caso de error
+        const intendenciaDocuments = mockIntendenciaDocuments.filter(doc => 
+          doc.workspace === 'intendencia'
+        );
+        setDocuments(intendenciaDocuments);
+        setFilteredDocuments(intendenciaDocuments);
       } finally {
         setIsLoading(false);
       }
@@ -269,9 +332,9 @@ export function IntendenciaDashboard() {
         mimeType: doc.mimeType,
         status: doc.status,
         workspace: doc.workspace,
-        tags: doc.tags,
+        tags: doc.tags || [],
         createdBy: doc.createdByUser.id,
-        createdByName: doc.createdByUser.fullName,
+        createdByUser: doc.createdByUser,
         createdAt: doc.createdAt,
         fileUrl: `/api/documents/${doc.id}/download` // URL del backend
       }));
@@ -291,14 +354,16 @@ export function IntendenciaDashboard() {
     }
   };
 
-  const handleDownload = (documentId: string) => {
+  const handleDownload = async (documentId: string) => {
     const doc = documents.find(d => d.id === documentId);
-    if (doc) {
+    if (!doc) return;
+
+    try {
       console.log('Downloading Intendencia document:', doc.fileName);
-      const link = document.createElement('a');
-      link.href = doc.fileUrl;
-      link.download = doc.fileName;
-      link.click();
+      await downloadDocumentWithCorrectName(doc.fileUrl, doc.fileName);
+    } catch (error) {
+      console.error('❌ Error downloading document:', error);
+      // TODO: Mostrar toast de error al usuario
     }
   };
 
@@ -326,15 +391,7 @@ export function IntendenciaDashboard() {
     }
   };
 
-  const handleDelete = async (documentId: string) => {
-    if (confirm('¿Estás seguro de que quieres eliminar este documento de Intendencia?')) {
-      try {
-        setDocuments(prev => prev.filter(doc => doc.id !== documentId));
-      } catch (error) {
-        console.error('Error deleting document:', error);
-      }
-    }
-  };
+
 
   const handleEdit = (documentId: string) => {
     console.log('Edit Intendencia document:', documentId);
@@ -538,7 +595,12 @@ export function IntendenciaDashboard() {
                     onDownload={handleDownload}
                     onArchive={canArchiveOthers ? handleArchive : undefined}
                     onRestore={canArchiveOthers ? handleRestore : undefined}
-                    onDelete={canManage ? handleDelete : undefined}
+                    onDeleteSuccess={(documentId) => {
+                      setDocuments(prev => prev.filter(doc => doc.id !== documentId));
+                    }}
+                    onDeleteError={(error) => {
+                      console.error('Error deleting document:', error);
+                    }}
                     onEdit={handleEdit}
                     onShare={handleShare}
                     currentPage={currentPage}

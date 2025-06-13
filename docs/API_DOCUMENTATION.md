@@ -128,7 +128,7 @@ El servidor se configura en `src/server.ts` con:
       "role": "administrador",
       "workspace": "presidencia",
       "isActive": true,
-      "lastLoginAt": "2024-01-01T00:00:00.000Z"
+      "lastLoginAt": "2025-01-01T00:00:00.000Z"
     },
     "tokens": {
       "accessToken": "eyJhbGciOiJIUzI1NiIs...",
@@ -270,8 +270,8 @@ http://localhost:3001/api/v1
   "status": "stored",
   "search": "título",
   "tags": ["urgente", "confidencial"],
-  "dateFrom": "2024-01-01",
-  "dateTo": "2024-12-31"
+  "dateFrom": "2025-01-01",
+  "dateTo": "2025-12-31"
 }
 ```
 

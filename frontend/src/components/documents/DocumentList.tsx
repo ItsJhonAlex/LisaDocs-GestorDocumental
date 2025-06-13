@@ -35,7 +35,12 @@ interface Document {
   workspace: string;
   tags?: string[];
   createdBy: string;
-  createdByName?: string;
+  createdByUser: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  };
   createdAt: string;
   storedAt?: string;
   archivedAt?: string;
@@ -52,7 +57,8 @@ interface DocumentListProps {
   onDownload?: (documentId: string) => void;
   onArchive?: (documentId: string) => void;
   onRestore?: (documentId: string) => void;
-  onDelete?: (documentId: string) => void;
+  onDeleteSuccess?: (documentId: string) => void;
+  onDeleteError?: (error: string) => void;
   onEdit?: (documentId: string) => void;
   onShare?: (documentId: string) => void;
   className?: string;
@@ -89,7 +95,8 @@ export function DocumentList({
   onDownload,
   onArchive,
   onRestore,
-  onDelete,
+  onDeleteSuccess,
+  onDeleteError,
   onEdit,
   onShare,
   className,
@@ -232,7 +239,8 @@ export function DocumentList({
             onDownload={onDownload}
             onArchive={onArchive}
             onRestore={onRestore}
-            onDelete={onDelete}
+            onDeleteSuccess={onDeleteSuccess}
+            onDeleteError={onDeleteError}
             onEdit={onEdit}
             onShare={onShare}
           />
