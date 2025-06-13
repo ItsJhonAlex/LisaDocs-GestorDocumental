@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { documentService } from '../../services/documentService'
+import { activityService } from '../../services/activityService'
 import { DocumentStatus } from '../../generated/prisma'
 import { z } from 'zod'
 
@@ -164,6 +165,20 @@ export async function archiveRoute(fastify: FastifyInstance): Promise<void> {
           id,
           DocumentStatus.archived,
           user.id
+        )
+
+        // 📊 Registrar actividad de archivado
+        await activityService.logFromRequest(
+          id,
+          user.id,
+          'archived',
+          request,
+          {
+            title: archivedDocument.title,
+            previousStatus: 'stored',
+            newStatus: 'archived',
+            reason: reason || 'Archived by user'
+          }
         )
 
         // ✅ Respuesta exitosa

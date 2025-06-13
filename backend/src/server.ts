@@ -24,6 +24,7 @@ import { documentRoutes } from './routes/documents'
 import { notificationRoutes } from './routes/notifications'
 import { adminRoutes } from './routes/admin'
 import { reportsRoutes } from './routes/reports'
+import { activityRoutes } from './routes/activity'
 
 // 📊 Servicios
 import { auditService } from './services/auditService'
@@ -282,6 +283,7 @@ async function createServer(): Promise<FastifyInstance> {
   await server.register(notificationRoutes, { prefix: '/api/notifications' })
   await server.register(adminRoutes, { prefix: '/api/admin' })
   await server.register(reportsRoutes, { prefix: '/api/reports' })
+  await server.register(activityRoutes, { prefix: '/api/activity' })
 
   // 🎣 Hooks globales
   server.addHook('onRequest', async (request, reply) => {

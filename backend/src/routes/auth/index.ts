@@ -4,6 +4,7 @@ import { registerRoute } from './register';
 import { refreshRoute } from './refresh';
 import { logoutRoute } from './logout';
 import { profileRoutes } from './profile';
+import { changePasswordRoutes } from './change-password';
 
 /**
  * 🔐 Router principal de autenticación
@@ -24,6 +25,9 @@ export async function authRoutes(fastify: FastifyInstance) {
   
   // 📋 GET/PUT /profile - Gestión de perfil
   await fastify.register(profileRoutes);
+  
+  // 🔐 POST /change-password - Cambiar contraseña
+  await fastify.register(changePasswordRoutes);
 
   // 🛡️ Hook global para logging de auth
   fastify.addHook('onRequest', async (request, reply) => {
@@ -71,7 +75,8 @@ export async function authRoutes(fastify: FastifyInstance) {
       register: 'POST /api/auth/register', 
       refresh: 'POST /api/auth/refresh',
       logout: 'POST /api/auth/logout',
-      profile: 'GET/PUT /api/auth/profile'
+      profile: 'GET/PUT /api/auth/profile',
+      changePassword: 'POST /api/auth/change-password'
     }
   });
 }

@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { documentService } from '../../services/documentService'
+import { activityService } from '../../services/activityService'
 import { z } from 'zod'
 
 // 📋 Schema de validación para parámetros
@@ -185,26 +186,18 @@ export async function downloadRoute(fastify: FastifyInstance): Promise<void> {
         reply.header('Last-Modified', new Date().toUTCString())
 
         // 📊 Registrar actividad de descarga
-        const { prisma } = await import('../../config/database')
-        await prisma.documentActivity.create({
-          data: {
-            documentId: id,
-            userId: user.id,
-            action: 'downloaded',
-            details: {
-              fileName: fileData.fileName,
-              fileSize: fileData.buffer.length,
-              inline: inline,
-              userAgent: request.headers['user-agent'] || '',
-              timestamp: new Date().toISOString()
-            },
-            ipAddress: request.ip,
-            userAgent: request.headers['user-agent'],
-            createdAt: new Date()
+        await activityService.logFromRequest(
+          id,
+          user.id,
+          'downloaded',
+          request,
+          {
+            fileName: fileData.fileName,
+            fileSize: fileData.buffer.length,
+            inline: inline,
+            title: document.title
           }
-        }).catch(error => {
-          console.error('❌ Error logging download activity:', error)
-        })
+        )
         
         // 📥 Enviar archivo
         return reply.send(fileData.buffer)

@@ -298,10 +298,6 @@ export function NotificationsPage() {
             Administra y envía notificaciones a los usuarios del sistema
           </p>
         </div>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Nueva Notificación
-        </Button>
       </div>
 
       {/* 📊 Estadísticas de notificaciones */}

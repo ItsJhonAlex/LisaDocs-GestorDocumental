@@ -4,6 +4,7 @@ import { documentRoutes } from './documents'
 import { userRoutes } from './users'
 import { workspaceRoutes } from './workspaces'
 import { reportsRoutes } from './reports'
+import { activityRoutes } from './activity'
 
 // 🚀 Plugin principal para todas las rutas de la API
 export async function routes(
@@ -25,6 +26,9 @@ export async function routes(
   
   // 📊 Rutas de reportes
   await fastify.register(reportsRoutes, { prefix: '' })
+  
+  // 📊 Rutas de actividad
+  await fastify.register(activityRoutes, { prefix: '' })
 
   // 🎯 Log de rutas registradas
   fastify.log.info({
@@ -33,7 +37,8 @@ export async function routes(
       documents: 'Document routes registered at /api/documents',
       users: 'User routes registered at /api/users',
       workspaces: 'Workspace routes registered at /api/workspaces',
-      reports: 'Report routes registered at /api/reports'
+      reports: 'Report routes registered at /api/reports',
+      activity: 'Activity routes registered at /api/activity'
     }
   }, '🚀 All API routes registered successfully')
 }

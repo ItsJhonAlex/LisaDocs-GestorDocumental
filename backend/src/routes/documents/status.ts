@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { documentService } from '../../services/documentService'
+import { activityService } from '../../services/activityService'
 import { DocumentStatus } from '../../generated/prisma'
 import { z } from 'zod'
 
@@ -154,6 +155,20 @@ export async function statusRoute(fastify: FastifyInstance): Promise<void> {
           newStatus,
           user.id,
           `Status changed via API from ${currentStatus} to ${newStatus}`
+        )
+
+        // 📊 Registrar actividad de cambio de estado
+        await activityService.logFromRequest(
+          id,
+          user.id,
+          'status_changed',
+          request,
+          {
+            title: updatedDocument.title,
+            previousStatus: currentStatus,
+            newStatus: newStatus,
+            reason: `Status changed via API from ${currentStatus} to ${newStatus}`
+          }
         )
 
         // ✅ Respuesta exitosa

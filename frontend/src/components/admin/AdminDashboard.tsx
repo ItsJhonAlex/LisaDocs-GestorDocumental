@@ -366,65 +366,7 @@ export function AdminDashboard() {
         />
       </div>
 
-      {/* 🔧 Acciones rápidas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            Acciones Rápidas
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={refreshing}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Actualizar
-              </Button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {canCreateUser() && (
-              <Button
-                onClick={() => setShowCreateDialog(true)}
-                className="h-20 flex flex-col"
-              >
-                <Plus className="h-6 w-6 mb-2" />
-                Crear Usuario
-            </Button>
-            )}
-            
-            <Button
-              variant="outline"
-              onClick={() => exportUsers('csv')}
-              className="h-20 flex flex-col"
-            >
-              <Download className="h-6 w-6 mb-2" />
-              Exportar CSV
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={() => exportUsers('excel')}
-              className="h-20 flex flex-col"
-            >
-              <Download className="h-6 w-6 mb-2" />
-              Exportar Excel
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="h-20 flex flex-col"
-              disabled
-            >
-              <BarChart3 className="h-6 w-6 mb-2" />
-              Reportes
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+
 
       {/* 📊 Panel con tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">

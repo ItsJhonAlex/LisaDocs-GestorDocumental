@@ -12,7 +12,7 @@ import UsersPage from '@/pages/UsersPage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { ArchivePage } from '@/pages/ArchivePage';
 import AdminPage from '@/pages/AdminPage';
-import { ProfilePage } from '@/pages/ProfilePage';
+import ProfilePage from '@/pages/ProfilePage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { WorkspacesPage } from '@/pages/WorkspacesPage';

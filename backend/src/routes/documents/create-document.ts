@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { documentService } from '../../services/documentService'
+import { activityService } from '../../services/activityService'
 import { WorkspaceType } from '../../generated/prisma'
 import { z } from 'zod'
 import * as path from 'path'
@@ -142,6 +143,23 @@ export async function createDocumentRoute(fastify: FastifyInstance): Promise<voi
           buffer,
           originalFileName,
           mimeType
+        )
+
+        // 📊 Registrar actividad de creación
+        await activityService.logFromRequest(
+          document.id,
+          user.id,
+          'created',
+          request,
+          {
+            fileName: originalFileName,
+            fileSize: buffer.length,
+            mimeType: mimeType,
+            workspace: workspace,
+            title: title,
+            tempFileId: tempFileId,
+            uploadSource: 'two-step-api'
+          }
         )
 
         // 🧹 Limpiar archivo temporal

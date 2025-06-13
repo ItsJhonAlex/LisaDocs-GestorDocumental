@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { MultipartFile } from '@fastify/multipart'
 import { documentService } from '../../services/documentService'
+import { activityService } from '../../services/activityService'
 import { WorkspaceType } from '../../generated/prisma'
 import { z } from 'zod'
 
@@ -228,6 +229,21 @@ export async function uploadRoute(fastify: FastifyInstance): Promise<void> {
           buffer,
           uploadedFile.filename,
           uploadedFile.mimetype || 'application/octet-stream'
+        )
+
+        // 📊 Registrar actividad de creación
+        await activityService.logFromRequest(
+          document.id,
+          user.id,
+          'uploaded',
+          request,
+          {
+            fileName: uploadedFile.filename,
+            fileSize: buffer.length,
+            mimeType: uploadedFile.mimetype,
+            workspace: workspace,
+            title: title
+          }
         )
 
         // ✅ Respuesta exitosa

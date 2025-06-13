@@ -286,27 +286,6 @@ export function DocumentsPage() {
         </Card>
       </div>
 
-      {/* 📊 Estadísticas de estado de documentos */}
-      {stats && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Estado de mis Documentos</CardTitle>
-            <CardDescription>
-              Distribución de tus documentos por estado actual
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DocumentStatusStats 
-              stats={{
-                draft: stats.byStatus?.draft || 0,
-                stored: stats.byStatus?.stored || 0,
-                archived: stats.byStatus?.archived || 0
-              }}
-            />
-          </CardContent>
-        </Card>
-      )}
-
       {/* 📄 Lista de documentos con tabs y filtros */}
       <Card>
         <CardHeader>

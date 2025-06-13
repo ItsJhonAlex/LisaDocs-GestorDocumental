@@ -1,4 +1,5 @@
 import { Menu, Search, Bell, Sun, Moon, Monitor, Settings, LogOut, User, ChevronDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -23,13 +24,13 @@ export function Header() {
   const searchQuery = useUIStore(state => state.searchQuery);
   const setSearchQuery = useUIStore(state => state.setSearchQuery);
   
-  const { user, logout, updateTheme } = useAuth();
+  const { user, logout } = useAuth();
   const unreadCount = useNotificationsStore(state => state.unreadCount);
+  const navigate = useNavigate();
 
   // 🎨 Cambiar tema
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
     setTheme(newTheme);
-    updateTheme(newTheme);
   };
 
   // 🔍 Búsqueda global
@@ -178,13 +179,13 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-2 h-auto p-2">
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src={undefined} alt={user?.name} />
+                    <AvatarImage src={undefined} alt={user?.fullName} />
                     <AvatarFallback className="text-xs">
-                      {user?.name ? getUserInitials(user.name) : 'U'}
+                      {user?.fullName ? getUserInitials(user.fullName) : 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="hidden sm:flex flex-col items-start text-sm">
-                    <span className="font-medium">{user?.name}</span>
+                    <span className="font-medium">{user?.fullName}</span>
                     <span className="text-muted-foreground text-xs capitalize">
                       {user?.role?.replace('_', ' ')}
                     </span>
@@ -195,18 +196,14 @@ export function Header() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
-                    <p className="font-medium">{user?.name}</p>
+                    <p className="font-medium">{user?.fullName}</p>
                     <p className="text-xs text-muted-foreground">{user?.email}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="w-4 h-4 mr-2" />
                   Mi Perfil
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Configuración
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive">

@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { documentService } from '../../services/documentService'
+import { activityService } from '../../services/activityService'
 import { z } from 'zod'
 
 // 📋 Schema de validación para parámetros
@@ -146,6 +147,20 @@ export async function deleteRoute(fastify: FastifyInstance): Promise<void> {
 
         // 🗑️ Eliminar documento (archivo + registro de BD)
         await documentService.deleteDocument(id, user.id)
+
+        // 📊 Registrar actividad de eliminación
+        await activityService.logFromRequest(
+          id,
+          user.id,
+          'deleted',
+          request,
+          {
+            title: documentInfo.title,
+            fileName: documentInfo.fileName,
+            workspace: documentInfo.workspace,
+            reason: 'User initiated deletion'
+          }
+        )
 
         // ✅ Respuesta exitosa
         return reply.status(200).send({

@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { documentService } from '../../services/documentService'
 import { userService } from '../../services/userService'
 import { permissionService } from '../../services/permissionService'
+import { activityService } from '../../services/activityService'
 import { prisma } from '../../config/database'
 import { z } from 'zod'
 
@@ -92,9 +93,12 @@ export async function reportsRoutes(fastify: FastifyInstance): Promise<void> {
                   items: {
                     type: 'object',
                     properties: {
-                      date: { type: 'string' },
+                      id: { type: 'string' },
                       action: { type: 'string' },
-                      count: { type: 'number' }
+                      createdAt: { type: 'string' },
+                      description: { type: 'string' },
+                      user: { type: 'object' },
+                      document: { type: 'object' }
                     }
                   }
                 }
@@ -352,7 +356,7 @@ export async function reportsRoutes(fastify: FastifyInstance): Promise<void> {
         documentsByStatus: statusStats,
         documentsByMonth: monthlyStats,
         usersByRole: roleStats,
-        recentActivity: [] // TODO: Implementar actividad reciente
+        recentActivity: await activityService.getRecentActivity(15)
       }
 
       console.log('✅ Statistics generated successfully:', {

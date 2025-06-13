@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { documentService } from '../../services/documentService'
+import { activityService } from '../../services/activityService'
 import { z } from 'zod'
 
 // 📋 Schema de validación para parámetros
@@ -160,6 +161,20 @@ export async function getRoute(fastify: FastifyInstance): Promise<void> {
           accessReason: user.role === 'administrador' ? 'admin' : 
                        document.createdBy === user.id ? 'owner' : 'workspace_permission'
         })
+
+        // 📊 Registrar actividad de visualización
+        await activityService.logFromRequest(
+          id,
+          user.id,
+          'viewed',
+          request,
+          {
+            title: document.title,
+            fileName: document.fileName,
+            workspace: document.workspace,
+            status: document.status
+          }
+        )
 
         // 📋 Formatear respuesta con toda la información del documento
         const formattedDocument = {

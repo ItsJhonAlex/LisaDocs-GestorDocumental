@@ -127,30 +127,6 @@ export function Sidebar() {
         },
       ],
     },
-    {
-      label: 'Sistema',
-      roles: ['administrador'],
-      items: [
-        {
-          label: 'Administración',
-          href: '/admin',
-          icon: Shield,
-          roles: ['administrador'],
-        },
-        {
-          label: 'Configuración',
-          href: '/settings',
-          icon: Settings,
-          roles: ['administrador'],
-        },
-        {
-          label: 'Notificaciones',
-          href: '/notifications',
-          icon: Bell,
-          roles: ['administrador'],
-        },
-      ],
-    },
   ];
 
   // 🎯 Verificar si un item debe mostrarse

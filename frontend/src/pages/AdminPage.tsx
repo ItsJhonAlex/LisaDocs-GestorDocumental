@@ -169,30 +169,7 @@ export default function AdminPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Acciones Rápidas</CardTitle>
-                <CardDescription>Herramientas administrativas frecuentes</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start">
-                  <Users className="w-4 h-4 mr-2" />
-                  Gestionar Usuarios
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Ver Reportes
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Configuración
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Activity className="w-4 h-4 mr-2" />
-                  Logs del Sistema
-                </Button>
-              </CardContent>
-            </Card>
+
           </div>
         </TabsContent>
 
