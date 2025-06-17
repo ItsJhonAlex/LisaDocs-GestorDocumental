@@ -136,12 +136,35 @@ export function Sidebar() {
       return false;
     }
 
-    // Verificar espacios de trabajo
-    if (item.workspaces && !item.workspaces.some(ws => hasWorkspaceAccess(ws))) {
-      // Los administradores pueden ver todos los espacios
-      if (!hasRole('administrador')) {
-        return false;
+    // 🏢 Verificar espacios de trabajo con reglas estrictas
+    if (item.workspaces) {
+      // ✅ Administradores pueden ver todos los espacios
+      if (hasRole('administrador')) {
+        return true;
       }
+
+      // ✅ Presidente y Vicepresidente pueden ver todos los espacios
+      if (hasAnyRole(['presidente', 'vicepresidente'])) {
+        return true;
+      }
+
+      // 🏢 Intendente y Secretario CAM solo pueden ver CAM
+      if (hasAnyRole(['intendente', 'secretario_cam'])) {
+        return item.workspaces.includes('cam');
+      }
+
+      // 🏛️ Secretario AMPP solo puede ver AMPP
+      if (hasRole('secretario_ampp')) {
+        return item.workspaces.includes('ampp');
+      }
+
+      // 🏛️ Secretarios CF solo pueden ver Comisiones CF
+      if (hasAnyRole(['secretario_cf', 'cf_member'])) {
+        return item.workspaces.includes('comisiones_cf');
+      }
+
+      // 👥 Para otros roles, usar permisos del backend
+      return item.workspaces.some(ws => hasWorkspaceAccess(ws));
     }
 
     return true;
@@ -215,11 +238,11 @@ export function Sidebar() {
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                   <span className="text-primary font-medium text-sm">
-                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                    {user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{user?.name}</p>
+                  <p className="text-sm font-medium truncate">{user?.fullName}</p>
                   <p className="text-xs text-muted-foreground capitalize">
                     {user?.role?.replace('_', ' ')}
                   </p>

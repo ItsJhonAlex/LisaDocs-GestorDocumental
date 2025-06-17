@@ -17,23 +17,22 @@ interface WorkspaceSwitchProps {
 /**
  * 🏢 Componente que maneja la navegación entre espacios de trabajo
  * 
- * Muestra el dashboard correspondiente según:
- * - El workspace seleccionado
- * - Los permisos reales del usuario desde el backend
- * - Control de acceso basado en la respuesta de /auth/profile
+ * Reglas de acceso implementadas:
+ * - 👑 Administradores: Acceso total a todos los workspaces
+ * - 🏛️ Presidente y Vicepresidente: Acceso total a todos los workspaces 
+ * - 🏢 Intendente: Solo acceso a CAM
+ * - 👥 Otros roles: Solo sus workspaces específicos según permisos del backend
  */
 export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
   const { user, hasWorkspaceAccess, hasPermission } = useAuth();
 
-  // 🛡️ Verificar si el usuario tiene acceso al workspace usando permisos del backend
+  // 🛡️ Verificar si el usuario tiene acceso al workspace usando reglas de negocio específicas
   const canAccessWorkspace = (workspace: string): boolean => {
     console.log('🔍 Debug WorkspaceSwitch canAccessWorkspace:', {
       user,
       workspace,
       userRole: user?.role,
-      permissions: user?.permissions,
-      hasWorkspaceAccessResult: hasWorkspaceAccess(workspace),
-      hasViewPermission: hasPermission('view', workspace)
+      permissions: user?.permissions
     });
     
     if (!user) {
@@ -43,18 +42,53 @@ export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
 
     // ✅ Administradores tienen acceso total siempre
     if (user.role === 'administrador') {
-      console.log('✅ Admin access granted');
+      console.log('✅ Admin access granted to all workspaces');
       return true;
     }
 
-    // ✅ Usar permisos reales del backend
+    // ✅ Presidente y Vicepresidente tienen acceso total a todos los workspaces
+    if (user.role === 'presidente' || user.role === 'vicepresidente') {
+      console.log('✅ Presidente/Vicepresidente access granted to all workspaces');
+      return true;
+    }
+
+    // 🏢 Intendente solo puede acceder a CAM
+    if (user.role === 'intendente') {
+      const canAccess = workspace === 'cam';
+      console.log(`🏢 Intendente access to ${workspace}: ${canAccess}`);
+      return canAccess;
+    }
+
+    // 🏢 Secretario CAM solo puede acceder a CAM
+    if (user.role === 'secretario_cam') {
+      const canAccess = workspace === 'cam';
+      console.log(`🏢 Secretario CAM access to ${workspace}: ${canAccess}`);
+      return canAccess;
+    }
+
+    // 🏛️ Secretario AMPP solo puede acceder a AMPP
+    if (user.role === 'secretario_ampp') {
+      const canAccess = workspace === 'ampp';
+      console.log(`🏛️ Secretario AMPP access to ${workspace}: ${canAccess}`);
+      return canAccess;
+    }
+
+    // 🏛️ Secretario CF solo puede acceder a Comisiones CF
+    if (user.role === 'secretario_cf' || user.role === 'cf_member') {
+      const canAccess = workspace === 'comisiones_cf';
+      console.log(`🏛️ Secretario/Miembro CF access to ${workspace}: ${canAccess}`);
+      return canAccess;
+    }
+
+    // 👥 Para otros roles, usar permisos del backend
     const hasWorkspaceAccessCheck = hasWorkspaceAccess(workspace);
     const hasViewPermissionCheck = hasPermission('view', workspace);
     
     const canAccess = hasWorkspaceAccessCheck || hasViewPermissionCheck;
     
-    console.log('🔍 Final access check:', {
+    console.log('🔍 Other roles access check:', {
       workspace,
+      role: user.role,
       hasWorkspaceAccessCheck,
       hasViewPermissionCheck,
       canAccess
@@ -63,11 +97,48 @@ export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
     return canAccess;
   };
 
+  // 📋 Obtener workspaces disponibles para el usuario actual
+  const getAvailableWorkspaces = (): string[] => {
+    if (!user) return [];
+
+    // Administradores, Presidente y Vicepresidente ven todos
+    if (user.role === 'administrador' || user.role === 'presidente' || user.role === 'vicepresidente') {
+      return ['presidencia', 'cam', 'ampp', 'intendencia', 'comisiones_cf'];
+    }
+
+    // Intendente y Secretario CAM solo ven CAM
+    if (user.role === 'intendente' || user.role === 'secretario_cam') {
+      return ['cam'];
+    }
+
+    // Secretario AMPP solo ve AMPP
+    if (user.role === 'secretario_ampp') {
+      return ['ampp'];
+    }
+
+    // Secretarios CF solo ven Comisiones CF
+    if (user.role === 'secretario_cf' || user.role === 'cf_member') {
+      return ['comisiones_cf'];
+    }
+
+    // Otros roles según sus permisos
+    const availableWorkspaces: string[] = [];
+    const workspacesToCheck = ['presidencia', 'cam', 'ampp', 'intendencia', 'comisiones_cf'];
+    
+    workspacesToCheck.forEach(workspace => {
+      if (canAccessWorkspace(workspace)) {
+        availableWorkspaces.push(workspace);
+      }
+    });
+
+    return availableWorkspaces;
+  };
+
   // 🎯 Renderizar el dashboard correspondiente
   const renderWorkspaceDashboard = () => {
     // Verificar acceso antes de mostrar el dashboard
     if (!canAccessWorkspace(currentWorkspace)) {
-      const availableWorkspaces = user?.permissions?.canView || [];
+      const availableWorkspaces = getAvailableWorkspaces();
       
       return (
         <div className="space-y-6">
@@ -84,7 +155,12 @@ export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
               ) : (
                 'No tienes acceso a ningún workspace configurado.'
               )}
-              Contacta con un administrador si necesitas acceso adicional.
+              {user?.role === 'intendente' && (
+                <>
+                  <br />
+                  <strong>Nota:</strong> Los intendentes solo tienen acceso al workspace CAM.
+                </>
+              )}
               <br />
               <small>Tu rol actual: <strong>{user?.role || 'Sin rol'}</strong></small>
             </AlertDescription>
@@ -111,7 +187,7 @@ export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
         return <ComisionesDashboard />;
       
       default: {
-        const availableWorkspaces = user?.permissions?.canView || [];
+        const availableWorkspaces = getAvailableWorkspaces();
         return (
           <div className="space-y-6">
             <Alert>
@@ -169,6 +245,7 @@ export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
   };
 
   const workspaceInfo = getWorkspaceInfo(currentWorkspace);
+  const availableWorkspaces = getAvailableWorkspaces();
 
   return (
     <div className="space-y-6">
@@ -202,7 +279,7 @@ export function WorkspaceSwitch({ currentWorkspace }: WorkspaceSwitchProps) {
           {/* 🔍 Debug badge para desarrollo */}
           {process.env.NODE_ENV === 'development' && (
             <Badge variant="secondary" className="text-xs">
-              Permisos: {user?.permissions?.canView?.length || 0}
+              Disponibles: {availableWorkspaces.length}
             </Badge>
           )}
         </div>

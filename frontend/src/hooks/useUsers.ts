@@ -231,9 +231,9 @@ export const useUsers = (initialFilters: UserFilters = {}) => {
   /**
    * 🔄 Cambiar contraseña
    */
-  const changePassword = useCallback(async (id: string, newPassword: string): Promise<boolean> => {
+  const changePassword = useCallback(async (id: string, passwordData: { currentPassword: string; newPassword: string }): Promise<boolean> => {
     try {
-      await userService.changePassword(id, newPassword);
+      await userService.changePassword(id, passwordData);
       toast.success('Contraseña actualizada exitosamente');
       return true;
     } catch (error) {

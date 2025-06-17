@@ -48,7 +48,7 @@ import type { BackendDocument } from '@/hooks/useBackendDocuments';
 export function DocumentsPage() {
   const { user } = useAuth();
   
-  // 🪝 Usar nuestro hook personalizado
+  // 🪝 Usar nuestro hook personalizado - SOLO documentos del usuario actual
   const {
     documents,
     filters,
@@ -65,7 +65,11 @@ export function DocumentsPage() {
     downloadDocument,
     updateFilters,
     changePage
-  } = useDocuments({ autoLoad: true });
+  } = useDocuments({ 
+    autoLoad: true,
+    // 🔒 Filtrar SOLO documentos del usuario actual
+    createdBy: user?.id ? [user.id] : []
+  });
 
   // 🎯 Estado local para UI
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
@@ -341,7 +345,13 @@ export function DocumentsPage() {
                   onDownload={handleDownload}
                   onArchive={handleArchive}
                   onRestore={handleRestore}
-                  onDelete={handleDelete}
+                  onDeleteSuccess={(documentId) => {
+                    // El documento ya fue eliminado por el hook useDocuments
+                    console.log('Document deleted successfully:', documentId);
+                  }}
+                  onDeleteError={(error) => {
+                    console.error('Error deleting document:', error);
+                  }}
                   onEdit={handleEdit}
                   onShare={handleShare}
                   currentPage={currentPage}

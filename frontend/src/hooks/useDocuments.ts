@@ -69,9 +69,21 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
   ): Promise<DocumentResponse> => {
     const params = new URLSearchParams();
     
-    // Agregar filtros a los parámetros
+    // 🐛 Debug: Log de filtros aplicados
+    console.log('🔍 fetchDocuments called with filters:', filters);
+    
+    // 🔒 Usar endpoint especializado para documentos del usuario
+    const isMyDocuments = filters.createdBy && filters.createdBy.length === 1;
+    const endpoint = isMyDocuments ? '/api/documents/my-documents' : '/api/documents';
+    
+    // Agregar filtros a los parámetros (excluyendo createdBy para my-documents)
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
+        // Skip createdBy for my-documents endpoint
+        if (isMyDocuments && key === 'createdBy') {
+          return;
+        }
+        
         if (Array.isArray(value)) {
           value.forEach(v => params.append(key, v.toString()));
         } else {
@@ -85,7 +97,11 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
     params.append('limit', limit.toString());
     params.append('offset', offset.toString());
 
-    const response = await fetch(`/api/documents?${params}`, {
+    // 🐛 Debug: Log de URL final
+    const finalUrl = `${endpoint}?${params}`;
+    console.log('🔍 Making API call to:', finalUrl);
+
+    const response = await fetch(finalUrl, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         'Content-Type': 'application/json'
@@ -98,6 +114,20 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
     }
 
     const result = await response.json();
+    
+    // 🐛 Debug: Log de respuesta
+    console.log('🔍 API response:', {
+      endpoint,
+      total: result.data.total,
+      documentsCount: result.data.documents.length,
+      documents: result.data.documents.map((d: any) => ({
+        id: d.id,
+        title: d.title,
+        createdBy: d.createdBy,
+        workspace: d.workspace
+      }))
+    });
+    
     return result.data;
   };
 
@@ -374,9 +404,11 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
    */
   useEffect(() => {
     if (autoLoad) {
-      loadDocuments();
+      // 🔒 Usar filtros iniciales en lugar de filtros vacíos
+      setFilters(initialFilters); // Asegurar que los filtros se establezcan
+      loadDocuments(initialFilters);
     }
-  }, [autoLoad, loadDocuments]); // Solo al montar si autoLoad
+  }, [autoLoad]); // Remover loadDocuments de dependencias para evitar loops
 
   /**
    * 📊 Cargar estadísticas inicial si autoLoad está habilitado

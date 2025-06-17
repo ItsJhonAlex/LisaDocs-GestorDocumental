@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyPluginOptions } from 'fastify'
 import { listRoute } from './list'
 import { createRoute } from './create'
 import { updateRoute } from './update'
+import { deleteRoute } from './delete'
 import { profileRoute } from './profile'
 import { permissionsRoute } from './permissions'
 import { LogMessages } from '../../utils/logger'
@@ -23,6 +24,9 @@ export async function userRoutes(
   // 🔐 PUT /users/:id/password - Cambiar contraseña
   await fastify.register(updateRoute)
   
+  // 🗑️ DELETE /users/:id - Eliminar usuario (admin)
+  await fastify.register(deleteRoute)
+  
   // 👤 GET /users/profile - Obtener perfil del usuario autenticado
   // ✏️ PUT /users/profile - Actualizar perfil del usuario autenticado
   // 🔐 PUT /users/profile/password - Cambiar contraseña del usuario autenticado
@@ -42,6 +46,7 @@ export async function userRoutes(
       create: 'POST /api/users - Create new user (admin)',
       updateUser: 'PUT /api/users/:id - Update user',
       changePassword: 'PUT /api/users/:id/password - Change user password',
+      deleteUser: 'DELETE /api/users/:id - Delete user (admin)',
       getProfile: 'GET /api/users/profile - Get current user profile',
       updateProfile: 'PUT /api/users/profile - Update current user profile',
       changeProfilePassword: 'PUT /api/users/profile/password - Change profile password',

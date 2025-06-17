@@ -1,15 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   FileText, 
   Plus, 
-  Users, 
+  Crown,
+  Users,
   Download,
+  Archive,
+  TrendingUp,
   Calendar,
-  CheckCircle
+  BarChart3,
+  Eye,
+  Briefcase
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -20,24 +26,23 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 
+// 📦 Importar componentes de documentos
 import {
   DocumentList,
   DocumentUpload,
   DocumentViewer,
-  DocumentFilters,
-  DocumentStatusStats,
-  type DocumentFiltersType
+  DocumentStatusStats
 } from '@/components/documents';
 
-// 🪝 Importar nuestro hook personalizado  
-import { useDocuments } from '@/hooks/useDocuments';
+// 🪝 Importar hooks
 import { useAuth } from '@/hooks/useAuth';
-
-// 🎯 Importar tipos
-import type { Document } from '@/types/document';
+import { useDocuments } from '@/hooks/useDocuments';
 import type { BackendDocument } from '@/hooks/useBackendDocuments';
 
-// 🎯 Tipos específicos para CAM
+// 🎯 Importar tipos
+import type { Document, WorkspaceType } from '@/types/document';
+
+// 📊 Interfaz para estadísticas de CAM
 interface CAMStats {
   totalDocuments: number;
   recentMeetings: number;
@@ -46,76 +51,92 @@ interface CAMStats {
   pendingApprovals: number;
 }
 
-const mockCAMStats: CAMStats = {
-  totalDocuments: 8,
-  recentMeetings: 3,
-  totalDownloads: 245,
-  activeMembers: 15,
-  pendingApprovals: 2
-};
-
 /**
- * 🏛️ Dashboard del Workspace CAM (Consejo de Administración Municipal)
+ * 🏛️ Dashboard del Workspace CAM (Consejo de la Administración Municipal)
  * 
  * Funcionalidades específicas:
- * - Gestión de actas de reuniones del consejo
- * - Acuerdos y resoluciones administrativas
- * - Documentos de gestión municipal
- * - Control de acceso según permisos de secretario CAM
+ * - Vista de documentos administrativos municipales
+ * - Gestión de actas y acuerdos del CAM
+ * - Control de acceso según permisos de rol
+ * - Estadísticas de uso y actividad
+ * 
+ * Reglas de visibilidad implementadas:
+ * - 👑 Administradores: Ven todos los documentos del workspace
+ * - 🏛️ Presidente y Vicepresidente: Ven todos los documentos del workspace
+ * - 🏢 Intendente y Secretario CAM: Ven todos los documentos del workspace
+ * - 👥 Otros roles: Solo ven sus propios documentos subidos (usa /my-documents)
  */
 export function CAMDashboard() {
-  const { user, hasPermission } = useAuth();
+  const { user, hasRole, hasAnyRole, hasPermission } = useAuth();
   
-  // 🪝 Usar nuestro hook personalizado con filtros de workspace
-  const {
-    documents,
-    filters,
-    error,
-    stats,
-    isLoading,
-    currentPage,
-    totalPages,
-    uploadDocument,
-    uploadMultipleDocuments,
-    deleteDocument,
-    archiveDocument,
-    restoreDocument,
-    downloadDocument,
-    updateFilters,
-    changePage
-  } = useDocuments({ 
-    workspace: 'cam', // Filtrar solo documentos de CAM
-    autoLoad: true 
-  });
-
   // 🎯 Estado local para UI
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
-  const [localStats] = useState<CAMStats>(mockCAMStats);
 
-  // 🎯 Permisos específicos para CAM usando datos del backend
-  const isAdmin = user?.role === 'administrador';
-  const canUpload = isAdmin || hasPermission('manage', 'cam') || hasPermission('view', 'cam');
-  const canArchiveOthers = isAdmin || hasPermission('archive', 'cam');
-  const canManage = isAdmin || hasPermission('manage', 'cam');
+  // 🔐 Verificar permisos del usuario
+  const isAdmin = hasRole('administrador');
+  const canUpload = hasPermission('manage', 'cam') || hasAnyRole(['administrador', 'presidente', 'vicepresidente', 'intendente', 'secretario_cam']);
+  const canArchiveOthers = hasAnyRole(['administrador', 'presidente', 'intendente']);
+  const canManage = hasPermission('manage', 'cam');
+  const canSeeAllDocuments = isAdmin || hasAnyRole(['presidente', 'vicepresidente', 'intendente', 'secretario_cam']);
+
+  // 🪝 Hook para documentos - usa automáticamente /my-documents cuando corresponde
+  const {
+    documents,
+    isLoading,
+    error,
+    stats,
+    uploadDocument,
+    downloadDocument,
+    archiveDocument,
+    restoreDocument,
+    deleteDocument,
+    updateFilters,
+    changePage,
+    currentPage,
+    totalPages
+  } = useDocuments({ 
+    autoLoad: true,
+    // 🔒 Si es usuario normal, solo sus documentos (usa /my-documents)
+    // 🏛️ Si es admin/intendente/secretario_cam, todos los documentos del workspace
+    ...(canSeeAllDocuments 
+      ? { workspace: ['cam'] } 
+      : { createdBy: user?.id ? [user.id] : [], workspace: ['cam'] }
+    )
+  });
+
+  // ✅ Debug para verificar permisos (optimizado)
+  useEffect(() => {
+    console.log('🔍 CAM Documents Debug:', {
+      userRole: user?.role,
+      userId: user?.id,
+      canSeeAllDocuments,
+      totalDocuments: documents.length,
+      isLoading,
+      usingMyDocuments: !canSeeAllDocuments
+    });
+  }, [user?.role, user?.id, canSeeAllDocuments, documents.length, isLoading]);
+
+  // 📊 Estadísticas simuladas de CAM
+  const [camStats] = useState<CAMStats>({
+    totalDocuments: documents.length,
+    recentMeetings: 3,
+    totalDownloads: 189,
+    activeMembers: 12,
+    pendingApprovals: 2
+  });
 
   // 🔍 Documentos filtrados por tab
   const getFilteredDocuments = () => {
     switch (activeTab) {
-      case 'meetings':
-        return documents.filter(doc => 
-          doc.tags?.includes('acta') || doc.tags?.includes('reunión')
-        );
-      case 'agreements':
-        return documents.filter(doc => 
-          doc.tags?.includes('acuerdo') || doc.tags?.includes('resolución')
-        );
       case 'drafts':
         return documents.filter(doc => doc.status === 'draft');
       case 'archived':
         return documents.filter(doc => doc.status === 'archived');
+      case 'stored':
+        return documents.filter(doc => doc.status === 'stored');
       default:
         return documents;
     }
@@ -127,8 +148,6 @@ export function CAMDashboard() {
   const handleUpload = async (backendDocuments: BackendDocument[]) => {
     try {
       console.log('📤 Documents uploaded to CAM:', backendDocuments);
-      
-      // Los documentos ya están subidos al backend, solo confirmamos
       console.log('✅ Documents successfully uploaded to CAM workspace');
       setIsUploadOpen(false);
     } catch (error) {
@@ -157,30 +176,27 @@ export function CAMDashboard() {
   };
 
   const handleDelete = async (documentId: string) => {
-    if (confirm('¿Estás seguro de que quieres eliminar este documento del CAM?')) {
+    if (confirm('¿Estás seguro de que quieres eliminar este documento de CAM?')) {
       await deleteDocument(documentId);
     }
   };
 
   const handleEdit = (documentId: string) => {
-    console.log('Edit CAM document:', documentId);
+    console.log('Edit document:', documentId);
+    // TODO: Implementar navegación a página de edición
   };
 
   const handleShare = (documentId: string) => {
-    console.log('Share CAM document:', documentId);
+    console.log('Share document:', documentId);
+    // TODO: Implementar funcionalidad de compartir
   };
 
   // 📊 Calcular estadísticas del tab actual
   const getTabStats = () => {
     return {
       all: documents.length,
-      meetings: documents.filter(d => 
-        d.tags?.includes('acta') || d.tags?.includes('reunión')
-      ).length,
-      agreements: documents.filter(d => 
-        d.tags?.includes('acuerdo') || d.tags?.includes('resolución')
-      ).length,
       drafts: documents.filter(d => d.status === 'draft').length,
+      stored: documents.filter(d => d.status === 'stored').length,
       archived: documents.filter(d => d.status === 'archived').length
     };
   };
@@ -189,80 +205,139 @@ export function CAMDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* 📊 Estadísticas de estado */}
-      {stats && (
+      {/* 📊 Header con estadísticas */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Briefcase className="w-6 h-6 text-blue-600" />
+            CAM
+          </h1>
+          <p className="text-muted-foreground">
+            {canSeeAllDocuments ? 'Consejo de la Administración Municipal' : 'Mis documentos de CAM'} • 
+            <Badge variant="outline" className="ml-2">{user?.role}</Badge>
+          </p>
+        </div>
+        
+        {canUpload && (
+          <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Subir Documento
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto document-upload-dialog">
+              <DialogHeader>
+                <DialogTitle>Subir Documento a CAM</DialogTitle>
+                <DialogDescription>
+                  Arrastra archivos o haz clic para seleccionar. Soporta múltiples archivos.
+                </DialogDescription>
+              </DialogHeader>
+              <DocumentUpload 
+                onUpload={handleUpload}
+                allowedTypes={['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'jpg', 'png']}
+                maxFileSize={50}
+                multiple={true}
+                defaultWorkspace="cam"
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
+      {/* 📊 Estadísticas rápidas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Estado de Documentos - CAM</CardTitle>
-            <CardDescription>
-              Distribución por estado de los documentos del Consejo de Administración Municipal
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Documentos</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <DocumentStatusStats 
-              stats={{
-                draft: stats.byStatus?.draft || 0,
-                stored: stats.byStatus?.stored || 0,
-                archived: stats.byStatus?.archived || 0
-              }}
-            />
+            <div className="text-2xl font-bold">{camStats.totalDocuments}</div>
+            <p className="text-xs text-muted-foreground">
+              {canSeeAllDocuments ? 'Total workspace' : 'Mis documentos'}
+            </p>
           </CardContent>
         </Card>
-      )}
 
-      {/* 📄 Gestión de documentos CAM */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Reuniones</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{camStats.recentMeetings}</div>
+            <p className="text-xs text-muted-foreground">
+              Este mes
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Descargas</CardTitle>
+            <Download className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{camStats.totalDownloads}</div>
+            <p className="text-xs text-muted-foreground">
+              Total acumulado
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Miembros Activos</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{camStats.activeMembers}</div>
+            <p className="text-xs text-muted-foreground">
+              Con acceso
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{camStats.pendingApprovals}</div>
+            <p className="text-xs text-muted-foreground">
+              Por aprobar
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 📄 Lista de documentos con tabs y filtros */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Documentos del CAM</CardTitle>
-              <CardDescription>
-                Actas de reuniones, acuerdos y documentos administrativos
-              </CardDescription>
-            </div>
-            
-            {canUpload && (
-              <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Subir Documento
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto document-upload-dialog">
-                  <DialogHeader>
-                    <DialogTitle>Subir Documento al CAM</DialogTitle>
-                    <DialogDescription>
-                      Sube documentos del Consejo de Administración Municipal.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DocumentUpload 
-                    onUpload={handleUpload}
-                    allowedTypes={['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt']}
-                    maxFileSize={50}
-                    multiple={true}
-                    defaultWorkspace="cam"
-                  />
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
+          <CardTitle>
+            {canSeeAllDocuments ? 'Documentos de CAM' : 'Mis Documentos'}
+          </CardTitle>
+          <CardDescription>
+            {canSeeAllDocuments 
+              ? 'Gestiona todos los documentos del Consejo de la Administración Municipal'
+              : 'Gestiona tus documentos personales de CAM'
+            }
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* 🎯 Tabs para categorizar documentos */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="all">Todos ({tabStats.all})</TabsTrigger>
-              <TabsTrigger value="meetings">
-                Reuniones ({tabStats.meetings})
-              </TabsTrigger>
-              <TabsTrigger value="agreements">
-                Acuerdos ({tabStats.agreements})
-              </TabsTrigger>
               <TabsTrigger value="drafts">Borradores ({tabStats.drafts})</TabsTrigger>
+              <TabsTrigger value="stored">Almacenados ({tabStats.stored})</TabsTrigger>
               <TabsTrigger value="archived">Archivados ({tabStats.archived})</TabsTrigger>
             </TabsList>
 
             <TabsContent value={activeTab} className="space-y-4">
+              {/* 📋 Lista de documentos */}
               <div className="min-h-[400px]">
                 {filteredDocuments.length === 0 && !isLoading ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -270,7 +345,7 @@ export function CAMDashboard() {
                     <h3 className="text-lg font-semibold mb-2">No hay documentos</h3>
                     <p className="text-muted-foreground mb-4">
                       {activeTab === 'all' 
-                        ? 'No hay documentos en el workspace del CAM.' 
+                        ? 'Aún no hay documentos. ¡Comienza subiendo tu primer archivo!' 
                         : `No hay documentos en la categoría "${activeTab}".`
                       }
                     </p>
@@ -285,32 +360,39 @@ export function CAMDashboard() {
                     )}
                   </div>
                 ) : (
-                                  <DocumentList
-                  documents={filteredDocuments}
-                  isLoading={isLoading}
-                  error={error}
-                  filters={{}}
-                  onFiltersChange={async (newFilters) => {
-                    // Convert component filters to hook filters
-                    const hookFilters: Partial<import('@/types/document').DocumentFilters> = {};
-                    if (newFilters.search) hookFilters.search = newFilters.search;
-                    await updateFilters(hookFilters);
-                  }}
-                  onView={handleView}
-                  onDownload={handleDownload}
-                  onArchive={canArchiveOthers ? handleArchive : undefined}
-                  onRestore={canArchiveOthers ? handleRestore : undefined}
-                  onDelete={canManage ? handleDelete : undefined}
-                  onEdit={handleEdit}
-                  onShare={handleShare}
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  pageSize={20}
-                  totalItems={filteredDocuments.length}
-                  onPageChange={changePage}
-                  defaultLayout="grid"
-                  showFilters={true}
-                />
+                  <DocumentList
+                    documents={filteredDocuments}
+                    isLoading={isLoading}
+                    error={error}
+                    filters={{}}
+                    onFiltersChange={async (newFilters) => {
+                      // Asegurar que workspace sea WorkspaceType[]
+                      const correctedFilters = {
+                        ...newFilters,
+                        workspace: newFilters.workspace?.map(w => w as WorkspaceType)
+                      };
+                      await updateFilters(correctedFilters);
+                    }}
+                    onView={handleView}
+                    onDownload={handleDownload}
+                    onArchive={handleArchive}
+                    onRestore={handleRestore}
+                    onDeleteSuccess={(documentId) => {
+                      console.log('Document deleted successfully:', documentId);
+                    }}
+                    onDeleteError={(error) => {
+                      console.error('Error deleting document:', error);
+                    }}
+                    onEdit={handleEdit}
+                    onShare={handleShare}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    pageSize={20}
+                    totalItems={filteredDocuments.length}
+                    onPageChange={changePage}
+                    defaultLayout="grid"
+                    showFilters={true}
+                  />
                 )}
               </div>
             </TabsContent>

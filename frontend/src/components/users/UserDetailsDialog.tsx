@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUsers } from '@/hooks/useUsers';
 import { userService } from '@/services/userService';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 import type { User as UserType } from '@/types/auth';
 
 interface UserDetailsDialogProps {
@@ -76,6 +77,7 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [loadingPermissions, setLoadingPermissions] = useState(false);
+  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
 
   // 🔄 Cargar datos adicionales
   const loadUserActivity = React.useCallback(async () => {
@@ -459,6 +461,7 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
           {canChangePassword(user) && (
             <Button 
               variant="outline"
+              onClick={() => setShowChangePasswordDialog(true)}
               className="bg-background border text-foreground hover:bg-accent"
             >
               <Key className="h-4 w-4 mr-2" />
@@ -467,6 +470,13 @@ export function UserDetailsDialog({ open, onOpenChange, user }: UserDetailsDialo
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* 🔑 Dialog de cambio de contraseña */}
+      <ChangePasswordDialog
+        open={showChangePasswordDialog}
+        onOpenChange={setShowChangePasswordDialog}
+        user={user}
+      />
     </Dialog>
   );
 } 

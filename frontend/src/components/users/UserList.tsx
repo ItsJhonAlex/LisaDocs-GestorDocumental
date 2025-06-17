@@ -33,6 +33,7 @@ import type { User, UserRole, WorkspaceType } from '@/types/auth';
 import { CreateUserDialog } from './CreateUserDialog';
 import { EditUserDialog } from './EditUserDialog';
 import { UserDetailsDialog } from './UserDetailsDialog';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 
 // 🎨 Constantes y utilidades
 const ROLE_COLORS: Record<UserRole, string> = {
@@ -109,6 +110,7 @@ export function UserList() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [viewingUser, setViewingUser] = useState<User | null>(null);
+  const [changingPasswordUser, setChangingPasswordUser] = useState<User | null>(null);
 
   // 🔍 Manejar búsqueda con debounce
   const handleSearch = (query: string) => {
@@ -550,7 +552,10 @@ export function UserList() {
                             )}
                             
                             {canChangePassword(user) && (
-                              <DropdownMenuItem className="bg-popover hover:bg-accent text-popover-foreground cursor-pointer">
+                              <DropdownMenuItem 
+                                onClick={() => setChangingPasswordUser(user)}
+                                className="bg-popover hover:bg-accent text-popover-foreground cursor-pointer"
+                              >
                                 <Key className="h-4 w-4 mr-2" />
                                 Cambiar contraseña
                               </DropdownMenuItem>
@@ -686,6 +691,14 @@ export function UserList() {
           open={!!viewingUser}
           onOpenChange={(open) => !open && setViewingUser(null)}
           user={viewingUser}
+        />
+      )}
+
+      {changingPasswordUser && (
+        <ChangePasswordDialog
+          open={!!changingPasswordUser}
+          onOpenChange={(open) => !open && setChangingPasswordUser(null)}
+          user={changingPasswordUser}
         />
       )}
     </div>

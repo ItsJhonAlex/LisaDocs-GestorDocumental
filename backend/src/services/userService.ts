@@ -153,7 +153,7 @@ export class UserService {
       }) => ({
         ...user,
         documentsCount: user._count.documents,
-        lastActivity: user.lastLoginAt
+        lastActivity: user.lastLoginAt || undefined
       }))
 
       return {
@@ -191,7 +191,7 @@ export class UserService {
       return {
         ...user,
         documentsCount: user._count.documents,
-        lastActivity: user.lastLoginAt
+        lastActivity: user.lastLoginAt || undefined
       }
 
     } catch (error) {
@@ -302,6 +302,45 @@ export class UserService {
   }
 
   /**
+   * 🔐 Cambiar contraseña como administrador (sin verificar contraseña actual del usuario)
+   */
+  async adminChangePassword(userId: string, newPassword: string): Promise<void> {
+    try {
+      // 📄 Obtener usuario
+      const user = await prisma.user.findUnique({
+        where: { id: userId }
+      })
+
+      if (!user) {
+        throw new Error('User not found')
+      }
+
+      // ✅ Validar nueva contraseña
+      if (newPassword.length < SECURITY_CONFIG.PASSWORD.MIN_LENGTH) {
+        throw new Error(`Password must be at least ${SECURITY_CONFIG.PASSWORD.MIN_LENGTH} characters`)
+      }
+
+      // 🔐 Hash nueva contraseña
+      const hashedNewPassword = await bcrypt.hash(newPassword, SECURITY_CONFIG.PASSWORD.BCRYPT_ROUNDS || 12)
+
+      // 💾 Actualizar contraseña
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          passwordHash: hashedNewPassword,
+          updatedAt: new Date()
+        }
+      })
+
+      console.log(`✅ Password changed by admin for user: ${user.email}`)
+
+    } catch (error) {
+      console.error('❌ Error changing password by admin:', error)
+      throw new Error(`Failed to change password: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  /**
    * ❌ Desactivar usuario (soft delete)
    */
   async deactivateUser(id: string, deactivatedByUserId: string): Promise<User> {
@@ -342,6 +381,82 @@ export class UserService {
     } catch (error) {
       console.error('❌ Error reactivating user:', error)
       throw new Error(`Failed to reactivate user: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  /**
+   * 🗑️ Eliminar usuario
+   */
+  async deleteUser(id: string, deletedByUserId: string): Promise<void> {
+    try {
+      // 🔍 Verificar que el usuario existe
+      const user = await this.getUserById(id)
+      if (!user) {
+        throw new Error('User not found')
+      }
+
+      // 🚫 Validaciones de seguridad
+      if (user.id === deletedByUserId) {
+        throw new Error('Cannot delete yourself')
+      }
+
+      // 🔐 Administradores no pueden eliminar otros administradores
+      const deletedByUser = await this.getUserById(deletedByUserId)
+      if (deletedByUser?.role === 'administrador' && user.role === 'administrador') {
+        throw new Error('Cannot delete another administrator')
+      }
+
+      // 📄 Verificar si tiene documentos activos
+      const activeDocumentsCount = await prisma.document.count({
+        where: {
+          createdBy: id,
+          status: {
+            not: 'archived'
+          }
+        }
+      })
+
+      if (activeDocumentsCount > 0) {
+        throw new Error(`User has ${activeDocumentsCount} active documents. Archive or reassign documents first.`)
+      }
+
+             // 🗑️ Eliminar usuario usando transacción
+       await prisma.$transaction(async (tx) => {
+         // 1. Eliminar documentos del usuario (si los hay archivados)
+         await tx.document.deleteMany({
+           where: { 
+             createdBy: id,
+             status: 'archived' 
+           }
+         })
+
+        // 2. Eliminar actividades del usuario
+        await tx.documentActivity.deleteMany({
+          where: { userId: id }
+        })
+
+        // 3. Eliminar notificaciones del usuario
+        await tx.notification.deleteMany({
+          where: { userId: id }
+        })
+
+        // 4. Finalmente eliminar el usuario
+        await tx.user.delete({
+          where: { id }
+        })
+      })
+
+      // 📊 Log de actividad
+      console.log(`🗑️ User deleted: ${user.email} by admin: ${deletedByUserId}`)
+
+    } catch (error) {
+      console.error('❌ Error deleting user:', error)
+      
+      if (error instanceof Error) {
+        throw error // Re-lanzar errores conocidos con su mensaje específico
+      }
+      
+      throw new Error(`Failed to delete user: Unknown error`)
     }
   }
 

@@ -253,11 +253,11 @@ export const userService = {
   },
 
   /**
-   * 🔄 Cambiar contraseña de usuario
+   * 🔄 Cambiar contraseña de usuario (Admin)
    */
-  async changePassword(id: string, newPassword: string): Promise<void> {
+  async changePassword(id: string, passwordData: { currentPassword: string; newPassword: string }): Promise<void> {
     try {
-      await apiClient.patch(`/users/${id}/password`, { password: newPassword });
+      await apiClient.put(`/users/${id}/password`, passwordData);
     } catch (error) {
       console.error('Error changing password:', error);
       
@@ -266,6 +266,8 @@ export const userService = {
         throw new Error('Usuario no encontrado');
       } else if (apiError.response?.status === 403) {
         throw new Error('No tienes permisos para cambiar la contraseña de este usuario');
+      } else if (apiError.response?.status === 400) {
+        throw new Error('Contraseña actual incorrecta');
       } else if (apiError.response?.data?.message) {
         throw new Error(apiError.response.data.message);
       }

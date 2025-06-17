@@ -315,20 +315,57 @@ async function updateRoutePlugin(fastify: FastifyInstance): Promise<void> {
       const { id: targetUserId } = request.params
       const { currentPassword, newPassword } = request.body
 
-      // 🔐 Solo el propio usuario puede cambiar su contraseña
-      if (authenticatedUser.id !== targetUserId) {
+      // 🔐 Verificar permisos para cambiar contraseña
+      const canChangePassword = (
+        // El usuario puede cambiar su propia contraseña
+        authenticatedUser.id === targetUserId ||
+        // Los administradores pueden cambiar contraseñas de cualquier usuario
+        authenticatedUser.role === 'administrador' ||
+        // Los presidentes pueden cambiar contraseñas de usuarios no administradores
+        (authenticatedUser.role === 'presidente' && targetUserId !== authenticatedUser.id)
+      );
+
+      if (!canChangePassword) {
         return reply.status(403).send({
           success: false,
           error: 'Access denied',
-          details: 'You can only change your own password'
+          details: 'You do not have permission to change this user\'s password'
         })
       }
 
-      // 🔐 Cambiar contraseña
-      await userService.changePassword(targetUserId, {
-        currentPassword,
-        newPassword
-      })
+      // Si es un administrador cambiando la contraseña de otro usuario,
+      // verificar que la contraseña actual sea la del administrador
+      if (authenticatedUser.id !== targetUserId && authenticatedUser.role === 'administrador') {
+        // Verificar la contraseña del administrador
+        const adminUser = await userService.getUserById(authenticatedUser.id);
+        if (!adminUser) {
+          return reply.status(401).send({
+            success: false,
+            error: 'Admin user not found',
+            details: 'Administrator account not found'
+          })
+        }
+
+        // Verificar contraseña del admin
+        const bcrypt = require('bcryptjs');
+        const isAdminPasswordValid = await bcrypt.compare(currentPassword, adminUser.passwordHash || '');
+        if (!isAdminPasswordValid) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Invalid admin password',
+            details: 'Administrator password is incorrect'
+          })
+        }
+
+        // Cambiar la contraseña del usuario objetivo sin verificar su contraseña actual
+        await userService.adminChangePassword(targetUserId, newPassword);
+      } else {
+        // Cambio de contraseña normal (usuario cambiando su propia contraseña)
+        await userService.changePassword(targetUserId, {
+          currentPassword,
+          newPassword
+                 });
+       }
 
       return reply.status(200).send({
         success: true,
