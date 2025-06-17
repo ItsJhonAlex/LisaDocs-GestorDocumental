@@ -43,7 +43,7 @@ import type { BackendDocument } from '@/hooks/useBackendDocuments';
  * - Vista de documentos accesibles según permisos
  * - Estadísticas personalizadas
  * - Subida de documentos
- * - Filtros y búsqueda avanzada
+ * - Organización por tabs
  */
 export function DocumentsPage() {
   const { user } = useAuth();
@@ -290,7 +290,7 @@ export function DocumentsPage() {
         </Card>
       </div>
 
-      {/* 📄 Lista de documentos con tabs y filtros */}
+      {/* 📄 Lista de documentos con tabs */}
       <Card>
         <CardHeader>
           <CardTitle>Mis Documentos</CardTitle>
@@ -330,38 +330,38 @@ export function DocumentsPage() {
                     </Button>
                   </div>
                 ) : (
-                                  <DocumentList
-                  documents={filteredDocuments}
-                  isLoading={isLoading}
-                  error={error}
-                  filters={{}}
-                  onFiltersChange={async (newFilters) => {
-                    // Convert component filters to hook filters
-                    const hookFilters: Partial<import('@/types/document').DocumentFilters> = {};
-                    if (newFilters.search) hookFilters.search = newFilters.search;
-                    await updateFilters(hookFilters);
-                  }}
-                  onView={handleView}
-                  onDownload={handleDownload}
-                  onArchive={handleArchive}
-                  onRestore={handleRestore}
-                  onDeleteSuccess={(documentId) => {
-                    // El documento ya fue eliminado por el hook useDocuments
-                    console.log('Document deleted successfully:', documentId);
-                  }}
-                  onDeleteError={(error) => {
-                    console.error('Error deleting document:', error);
-                  }}
-                  onEdit={handleEdit}
-                  onShare={handleShare}
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  pageSize={20}
-                  totalItems={filteredDocuments.length}
-                  onPageChange={changePage}
-                  defaultLayout="grid"
-                  showFilters={true}
-                />
+                  <DocumentList
+                    documents={filteredDocuments}
+                    isLoading={isLoading}
+                    error={error}
+                    filters={{}}
+                    onFiltersChange={async (newFilters) => {
+                      // Mantenemos compatibilidad pero sin filtros UI
+                      const hookFilters: Partial<import('@/types/document').DocumentFilters> = {};
+                      if (newFilters.search) hookFilters.search = newFilters.search;
+                      await updateFilters(hookFilters);
+                    }}
+                    onView={handleView}
+                    onDownload={handleDownload}
+                    onArchive={handleArchive}
+                    onRestore={handleRestore}
+                    onDeleteSuccess={(documentId) => {
+                      // El documento ya fue eliminado por el hook useDocuments
+                      console.log('Document deleted successfully:', documentId);
+                    }}
+                    onDeleteError={(error) => {
+                      console.error('Error deleting document:', error);
+                    }}
+                    onEdit={handleEdit}
+                    onShare={handleShare}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    pageSize={20}
+                    totalItems={filteredDocuments.length}
+                    onPageChange={changePage}
+                    defaultLayout="grid"
+                    showFilters={false}
+                  />
                 )}
               </div>
             </TabsContent>

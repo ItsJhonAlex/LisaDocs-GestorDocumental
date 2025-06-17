@@ -245,75 +245,9 @@ export function CAMDashboard() {
         )}
       </div>
 
-      {/* 📊 Estadísticas rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Documentos</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{camStats.totalDocuments}</div>
-            <p className="text-xs text-muted-foreground">
-              {canSeeAllDocuments ? 'Total workspace' : 'Mis documentos'}
-            </p>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Reuniones</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{camStats.recentMeetings}</div>
-            <p className="text-xs text-muted-foreground">
-              Este mes
-            </p>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Descargas</CardTitle>
-            <Download className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{camStats.totalDownloads}</div>
-            <p className="text-xs text-muted-foreground">
-              Total acumulado
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Miembros Activos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{camStats.activeMembers}</div>
-            <p className="text-xs text-muted-foreground">
-              Con acceso
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{camStats.pendingApprovals}</div>
-            <p className="text-xs text-muted-foreground">
-              Por aprobar
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 📄 Lista de documentos con tabs y filtros */}
+      {/* 📄 Lista de documentos con tabs */}
       <Card>
         <CardHeader>
           <CardTitle>
@@ -366,7 +300,7 @@ export function CAMDashboard() {
                     error={error}
                     filters={{}}
                     onFiltersChange={async (newFilters) => {
-                      // Asegurar que workspace sea WorkspaceType[]
+                      // Mantenemos compatibilidad pero sin filtros UI
                       const correctedFilters = {
                         ...newFilters,
                         workspace: newFilters.workspace?.map(w => w as WorkspaceType)
@@ -391,7 +325,7 @@ export function CAMDashboard() {
                     totalItems={filteredDocuments.length}
                     onPageChange={changePage}
                     defaultLayout="grid"
-                    showFilters={true}
+                    showFilters={false}
                   />
                 )}
               </div>

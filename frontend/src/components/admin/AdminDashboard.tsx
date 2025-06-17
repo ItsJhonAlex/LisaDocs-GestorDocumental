@@ -20,7 +20,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
 
 import { useUsers } from '@/hooks/useUsers';
 import { UserList } from '../users/UserList';
@@ -200,135 +199,56 @@ export function AdminDashboard() {
                       <div className={`w-3 h-3 rounded-full ${colors[key] || 'bg-gray-400'}`} />
                       <span className="capitalize">{key.replace('_', ' ')}</span>
                     </div>
-                    <span className="font-medium">{count}</span>
+                    <span className="font-medium">{count} ({Math.round(percentage)}%)</span>
                   </div>
                   <Progress value={percentage} className="h-2" />
                 </div>
               );
             })}
-          {Object.keys(safeData).length === 0 && (
-            <div className="text-center py-4 text-muted-foreground">
-              <p>No hay datos disponibles</p>
-            </div>
-          )}
         </CardContent>
       </Card>
     );
   };
 
-  // 🔍 Debug info
-  console.log('AdminDashboard - Loading:', loading);
-  console.log('AdminDashboard - Users count:', users?.length || 0);
-  console.log('AdminDashboard - Error:', error);
-
   return (
     <div className="space-y-6">
-      {/* 🔍 Debug Status */}
-      <Card className="bg-muted/50">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between text-sm">
-            <span>Estado del Sistema:</span>
-            <div className="flex items-center gap-4">
-              <Badge variant={loading ? "secondary" : "default"}>
-                {loading ? "🔄 Cargando..." : "✅ Listo"}
-              </Badge>
-              <Badge variant="outline">
-                {users?.length || 0} usuarios
-              </Badge>
-              {error && (
-                <Badge variant="destructive">
-                  ❌ Error de conexión
-                </Badge>
-              )}
-            </div>
-          </div>
-          
-          {/* 🔍 Debug Raw Data */}
-          <details className="mt-4">
-            <summary className="cursor-pointer text-sm font-medium">🔧 Debug Data (click para expandir)</summary>
-            <div className="mt-2 p-2 bg-background rounded border text-xs font-mono">
-              <div><strong>Users Array:</strong> {JSON.stringify(users, null, 2)}</div>
-              <div className="mt-2"><strong>Stats:</strong> {JSON.stringify(stats, null, 2)}</div>
-              <div className="mt-2"><strong>Pagination:</strong> {JSON.stringify(pagination, null, 2)}</div>
-              <div className="mt-2"><strong>Error:</strong> {error || 'null'}</div>
-            </div>
-          </details>
-        </CardContent>
-      </Card>
-
-      {/* 🚨 Mostrar errores si los hay */}
-      {error && (
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="text-destructive">Error de Conexión</CardTitle>
-            <CardDescription>
-              No se pudo conectar con el servidor. Verifica que el backend esté ejecutándose en http://localhost:8081
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">{error}</p>
-            <Button 
-              variant="outline" 
-              onClick={handleRefresh}
-              disabled={refreshing}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              Reintentar Conexión
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 🎯 Header del Dashboard de Gestión de Usuarios */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Gestión de Usuarios</h1>
-              <p className="text-muted-foreground">
-                Administra usuarios, roles y permisos del sistema LisaDocs
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-          <Button
-            onClick={() => setShowCreateDialog(true)}
-            disabled={!!error || loading}
-            className="h-20"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-                Crear Usuario
-              </Button>
-              <div className="flex items-center gap-2">
+      {/* 🎯 Header con acciones */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2">
+            <h2 className="text-2xl font-bold tracking-tight">Panel de Administración</h2>
             <Badge 
               variant="outline" 
               className={error ? "bg-red-50 text-red-700 border-red-200" : "bg-green-50 text-green-700 border-green-200"}
             >
               {error ? "⚠️ Backend Desconectado" : "✅ Sistema Operativo"}
-                  </Badge>
-              </div>
-            </div>
+            </Badge>
           </div>
-
-          {/* 🔍 Barra de búsqueda y filtros */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Búsqueda y Filtros</CardTitle>
-              <CardDescription>
-                Herramientas para encontrar y filtrar usuarios específicos
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <Input
-                    placeholder="Buscar usuarios por nombre, email o rol..."
-                    className="pl-10"
-                  />
-                </div>
-                <Button variant="outline">
-                  Filtros Avanzados
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          <Button 
+            variant="outline" 
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Actualizando...' : 'Actualizar'}
+          </Button>
+          
+          {canCreateUser() && (
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Usuario
+            </Button>
+          )}
+          
+          <Button variant="outline" onClick={() => exportUsers('csv')}>
+            <Download className="h-4 w-4 mr-2" />
+            Exportar
+          </Button>
+        </div>
+      </div>
 
       {/* 📊 Estadísticas principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -366,16 +286,14 @@ export function AdminDashboard() {
         />
       </div>
 
-
-
       {/* 📊 Panel con tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Resumen</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">Resumen</TabsTrigger>
           <TabsTrigger value="users">Usuarios</TabsTrigger>
           <TabsTrigger value="analytics">Analíticas</TabsTrigger>
-              <TabsTrigger value="settings">Configuración</TabsTrigger>
-            </TabsList>
+          <TabsTrigger value="settings">Configuración</TabsTrigger>
+        </TabsList>
 
         {/* 📈 Tab Resumen */}
         <TabsContent value="overview" className="space-y-4">
@@ -434,12 +352,12 @@ export function AdminDashboard() {
               )}
             </CardContent>
           </Card>
-            </TabsContent>
+        </TabsContent>
 
         {/* 👥 Tab Usuarios */}
         <TabsContent value="users" className="space-y-4">
           <UserList />
-            </TabsContent>
+        </TabsContent>
 
         {/* 📊 Tab Analíticas */}
         <TabsContent value="analytics" className="space-y-4">
@@ -470,7 +388,7 @@ export function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-            </TabsContent>
+        </TabsContent>
 
         {/* ⚙️ Tab Configuración */}
         <TabsContent value="settings" className="space-y-4">
@@ -498,8 +416,8 @@ export function AdminDashboard() {
                         <Badge variant="default">Habilitado</Badge>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm">Expiración de contraseñas</span>
-                        <Badge variant="outline">90 días</Badge>
+                        <span className="text-sm">Tiempo de sesión</span>
+                        <Badge variant="outline">24 horas</Badge>
                       </div>
                     </CardContent>
                   </Card>
@@ -514,8 +432,8 @@ export function AdminDashboard() {
                         <Badge variant="secondary">Opcional</Badge>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm">Sesiones concurrentes</span>
-                        <Badge variant="outline">Ilimitadas</Badge>
+                        <span className="text-sm">Complejidad de contraseñas</span>
+                        <Badge variant="default">Media</Badge>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Logs de auditoría</span>
@@ -525,32 +443,32 @@ export function AdminDashboard() {
                   </Card>
                 </div>
 
-                <div className="pt-4 border-t">
-                  <h4 className="font-medium mb-3">Acciones de Mantenimiento</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <Button variant="outline" size="sm" disabled>
-                      <Shield className="w-4 h-4 mr-2" />
-                      Backup DB
-                    </Button>
-                    <Button variant="outline" size="sm" disabled>
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Limpiar Cache
-                    </Button>
-                    <Button variant="outline" size="sm" disabled>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Verificar Sistema
-                    </Button>
-                    <Button variant="outline" size="sm" disabled>
-                      <AlertTriangle className="w-4 h-4 mr-2" />
-                      Modo Mantenimiento
-                    </Button>
-                  </div>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Acciones Administrativas</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Button variant="outline" disabled>
+                        <Shield className="w-4 h-4 mr-2" />
+                        Backup Sistema
+                      </Button>
+                      <Button variant="outline" disabled>
+                        <AlertTriangle className="w-4 h-4 mr-2" />
+                        Logs de Sistema
+                      </Button>
+                      <Button variant="outline" disabled>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Verificar Integridad
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </CardContent>
           </Card>
-            </TabsContent>
-          </Tabs>
+        </TabsContent>
+      </Tabs>
 
       {/* 🔲 Dialogs */}
       <CreateUserDialog

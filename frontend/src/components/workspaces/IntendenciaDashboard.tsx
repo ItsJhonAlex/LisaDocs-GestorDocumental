@@ -24,9 +24,7 @@ import {
   DocumentList,
   DocumentUpload,
   DocumentViewer,
-  DocumentFilters,
-  DocumentStatusStats,
-  type DocumentFiltersType
+  DocumentStatusStats
 } from '@/components/documents';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -196,7 +194,6 @@ export function IntendenciaDashboard() {
   const [documents, setDocuments] = useState<Document[]>(mockIntendenciaDocuments);
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>(mockIntendenciaDocuments);
   const [stats] = useState<IntendenciaStats>(mockIntendenciaStats);
-  const [filters, setFilters] = useState<DocumentFiltersType>({});
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -278,7 +275,7 @@ export function IntendenciaDashboard() {
     loadDocuments();
   }, []);
 
-  // 🔍 Aplicar filtros
+  // 🔍 Aplicar filtros por tab (sin filtros UI)
   useEffect(() => {
     let filtered = [...documents];
 
@@ -300,22 +297,9 @@ export function IntendenciaDashboard() {
       filtered = filtered.filter(doc => doc.status === 'archived');
     }
 
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      filtered = filtered.filter(doc => 
-        doc.title.toLowerCase().includes(searchTerm) ||
-        doc.description?.toLowerCase().includes(searchTerm) ||
-        doc.fileName.toLowerCase().includes(searchTerm)
-      );
-    }
-
-    if (filters.status?.length) {
-      filtered = filtered.filter(doc => filters.status!.includes(doc.status));
-    }
-
     setFilteredDocuments(filtered);
     setCurrentPage(1);
-  }, [documents, filters, activeTab]);
+  }, [documents, activeTab]);
 
   // 🎯 Gestores de eventos
   const handleUpload = async (backendDocuments: BackendDocument[]) => {
@@ -403,24 +387,7 @@ export function IntendenciaDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* 📊 Estadísticas de estado */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Estado de Documentos - Intendencia</CardTitle>
-          <CardDescription>
-            Distribución por estado de los documentos de la Intendencia Municipal
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DocumentStatusStats 
-            stats={{
-              draft: documents.filter(d => d.status === 'draft').length,
-              stored: documents.filter(d => d.status === 'stored').length,
-              archived: documents.filter(d => d.status === 'archived').length
-            }}
-          />
-        </CardContent>
-      </Card>
+
 
       {/* 📄 Gestión de documentos Intendencia */}
       <Card>
@@ -484,18 +451,6 @@ export function IntendenciaDashboard() {
             </TabsList>
 
             <TabsContent value={activeTab} className="space-y-4">
-              <DocumentFilters
-                filters={filters}
-                onFiltersChange={setFilters}
-                availableUsers={[
-                  { id: 'intendente-user', name: 'Roberto Castro (Intendente)' },
-                  { id: 'coordinador-user', name: 'Patricia Morales (Coordinadora)' },
-                  { id: 'arquitecto-user', name: 'Fernando Ruiz (Arquitecto Municipal)' },
-                  { id: 'current-user', name: user?.fullName || 'Usuario Actual' }
-                ]}
-                availableTags={['plan', 'desarrollo', 'informe', 'gestión', 'permisos', 'construcción']}
-              />
-
               <div className="min-h-[400px]">
                 {filteredDocuments.length === 0 && !isLoading ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -521,8 +476,10 @@ export function IntendenciaDashboard() {
                   <DocumentList
                     documents={filteredDocuments}
                     isLoading={isLoading}
-                    filters={filters}
-                    onFiltersChange={setFilters}
+                    filters={{}}
+                    onFiltersChange={() => {
+                      // Sin filtros UI - función vacía para compatibilidad
+                    }}
                     onView={handleView}
                     onDownload={handleDownload}
                     onArchive={canArchiveOthers ? handleArchive : undefined}

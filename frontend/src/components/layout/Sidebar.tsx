@@ -65,6 +65,7 @@ export function Sidebar() {
           label: 'Documentos',
           href: '/documents',
           icon: FileText,
+          roles: ['administrador', 'presidente'], // 🔒 Solo admins y presidentes
         },
       ],
     },

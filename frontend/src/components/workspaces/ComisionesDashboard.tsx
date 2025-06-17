@@ -24,9 +24,7 @@ import {
   DocumentList,
   DocumentUpload,
   DocumentViewer,
-  DocumentFilters,
-  DocumentStatusStats,
-  type DocumentFiltersType
+  DocumentStatusStats
 } from '@/components/documents';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -196,7 +194,6 @@ export function ComisionesDashboard() {
   const [documents, setDocuments] = useState<Document[]>(mockComisionesDocuments);
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>(mockComisionesDocuments);
   const [stats] = useState<ComisionesStats>(mockComisionesStats);
-  const [filters, setFilters] = useState<DocumentFiltersType>({});
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -278,7 +275,7 @@ export function ComisionesDashboard() {
     loadDocuments();
   }, []);
 
-  // 🔍 Aplicar filtros
+  // 🔍 Aplicar filtros por tab (sin filtros UI)
   useEffect(() => {
     let filtered = [...documents];
 
@@ -302,22 +299,9 @@ export function ComisionesDashboard() {
       filtered = filtered.filter(doc => doc.status === 'archived');
     }
 
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      filtered = filtered.filter(doc => 
-        doc.title.toLowerCase().includes(searchTerm) ||
-        doc.description?.toLowerCase().includes(searchTerm) ||
-        doc.fileName.toLowerCase().includes(searchTerm)
-      );
-    }
-
-    if (filters.status?.length) {
-      filtered = filtered.filter(doc => filters.status!.includes(doc.status));
-    }
-
     setFilteredDocuments(filtered);
     setCurrentPage(1);
-  }, [documents, filters, activeTab]);
+  }, [documents, activeTab]);
 
   // 🎯 Gestores de eventos
   const handleUpload = async (backendDocuments: BackendDocument[]) => {
@@ -405,24 +389,7 @@ export function ComisionesDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* 📊 Estadísticas de estado */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Estado de Documentos - Comisiones CF</CardTitle>
-          <CardDescription>
-            Distribución por estado de los documentos de las Comisiones de Trabajo CF1-CF8
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DocumentStatusStats 
-            stats={{
-              draft: documents.filter(d => d.status === 'draft').length,
-              stored: documents.filter(d => d.status === 'stored').length,
-              archived: documents.filter(d => d.status === 'archived').length
-            }}
-          />
-        </CardContent>
-      </Card>
+
 
       {/* 📄 Gestión de documentos Comisiones */}
       <Card>
@@ -488,19 +455,6 @@ export function ComisionesDashboard() {
             </TabsList>
 
             <TabsContent value={activeTab} className="space-y-4">
-              <DocumentFilters
-                filters={filters}
-                onFiltersChange={setFilters}
-                availableUsers={[
-                  { id: 'coordinador-cf1-user', name: 'María González (Coordinadora CF1)' },
-                  { id: 'coordinador-cf3-user', name: 'Carlos Pérez (Coordinador CF3)' },
-                  { id: 'medico-user', name: 'Dr. Antonio Silva (CF2)' },
-                  { id: 'ingeniero-user', name: 'Ing. Laura Díaz (CF4)' },
-                  { id: 'current-user', name: user?.fullName || 'Usuario Actual' }
-                ]}
-                availableTags={['informe', 'acta', 'dictamen', 'propuesta', 'memoria', 'cf1', 'cf2', 'cf3', 'cf4', 'cf5', 'cf6', 'cf7', 'cf8']}
-              />
-
               <div className="min-h-[400px]">
                 {filteredDocuments.length === 0 && !isLoading ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -526,8 +480,10 @@ export function ComisionesDashboard() {
                   <DocumentList
                     documents={filteredDocuments}
                     isLoading={isLoading}
-                    filters={filters}
-                    onFiltersChange={setFilters}
+                    filters={{}}
+                    onFiltersChange={() => {
+                      // Sin filtros UI - función vacía para compatibilidad
+                    }}
                     onView={handleView}
                     onDownload={handleDownload}
                     onArchive={canArchiveOthers ? handleArchive : undefined}
